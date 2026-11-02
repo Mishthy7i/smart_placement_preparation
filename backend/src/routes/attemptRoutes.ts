@@ -232,20 +232,28 @@ router.get(
 
             const [rows] = await db.query(
                 `
-        SELECT
-          a.id,
-          a.topic_id,
-          t.name AS topic_name,
-          a.score,
-          a.total_questions,
-          ROUND((a.score / a.total_questions) * 100) AS percentage,
-          a.started_at,
-          a.completed_at
-        FROM attempts a
-        LEFT JOIN topics t ON a.topic_id = t.id
-        WHERE a.user_id = ?
-        ORDER BY a.completed_at DESC
-        `,
+  SELECT
+    a.id,
+    a.topic_id,
+    a.test_id,
+    COALESCE(t.name, mt.title) AS topic_name,
+    CASE
+      WHEN a.test_id IS NOT NULL THEN 'MOCK_TEST'
+      ELSE 'TOPIC_PRACTICE'
+    END AS attempt_type,
+    a.score,
+    a.total_questions,
+    ROUND((a.score / NULLIF(a.total_questions, 0)) * 100) AS percentage,
+    a.started_at,
+    a.completed_at
+  FROM attempts a
+  LEFT JOIN topics t
+    ON a.topic_id = t.id
+  LEFT JOIN tests mt
+    ON a.test_id = mt.id
+  WHERE a.user_id = ?
+  ORDER BY a.completed_at DESC
+  `,
                 [userId]
             );
 

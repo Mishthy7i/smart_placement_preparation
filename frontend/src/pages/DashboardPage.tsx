@@ -40,7 +40,10 @@ type Topic = {
 
 type Attempt = {
     id: number;
+    topic_id: number | null;
+    test_id: number | null;
     topic_name: string;
+    attempt_type: "MOCK_TEST" | "TOPIC_PRACTICE";
     score: number;
     total_questions: number;
     percentage: number;
@@ -87,19 +90,10 @@ function DashboardPage() {
     const [error, setError] = useState("");
     const [historyError, setHistoryError] = useState("");
     const [analyticsError, setAnalyticsError] = useState("");
-
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const savedUser = localStorage.getItem("user");
     const user = savedUser ? JSON.parse(savedUser) : null;
-
-    const token = localStorage.getItem("token");
-
-    const authConfig = {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    };
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -107,10 +101,24 @@ function DashboardPage() {
         navigate("/login");
     };
 
+    const getAuthConfig = () => ({
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+    });
+
+    const scrollToSection = (id: string) => {
+        document.getElementById(id)?.scrollIntoView({
+            behavior: "smooth",
+        });
+
+        setMobileMenuOpen(false);
+    };
+
     useEffect(() => {
         const fetchTopics = async () => {
             try {
-                const response = await api.get("/topics", authConfig);
+                const response = await api.get("/topics", getAuthConfig());
                 setTopics(response.data.data);
             } catch (error: any) {
                 if (error.response?.status === 401) {
@@ -129,7 +137,11 @@ function DashboardPage() {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const response = await api.get("/attempts/history", authConfig);
+                const response = await api.get(
+                    "/attempts/history",
+                    getAuthConfig()
+                );
+
                 setAttempts(response.data.data);
             } catch (error: any) {
                 if (error.response?.status === 401) {
@@ -150,8 +162,9 @@ function DashboardPage() {
             try {
                 const response = await api.get(
                     "/analytics/summary",
-                    authConfig
+                    getAuthConfig()
                 );
+
                 setAnalytics(response.data.data);
             } catch (error: any) {
                 if (error.response?.status === 401) {
@@ -172,8 +185,9 @@ function DashboardPage() {
             try {
                 const response = await api.get(
                     "/recommendations",
-                    authConfig
+                    getAuthConfig()
                 );
+
                 setRecommendations(response.data.data);
             } catch (error: any) {
                 if (error.response?.status === 401) {
@@ -187,195 +201,18 @@ function DashboardPage() {
         fetchRecommendations();
     }, []);
 
-    const scrollToSection = (id: string) => {
-        document.getElementById(id)?.scrollIntoView({
-            behavior: "smooth",
-        });
-
-        setMobileMenuOpen(false);
-    };
-
     const overview = analytics?.overview?.[0];
 
     return (
         <Box minH="100vh" bg="#f6f8fc" color="gray.800">
-            <Box
-                position="sticky"
-                top="0"
-                zIndex="20"
-                bg="rgba(255,255,255,0.9)"
-                backdropFilter="blur(16px)"
-                borderBottomWidth="1px"
-                borderColor="gray.200"
-            >
-                <Container maxW="7xl" py={4}>
-                    <Flex justify="space-between" align="center">
-                        <Flex
-                            align="center"
-                            gap={3}
-                            cursor="pointer"
-                            onClick={() => navigate("/dashboard")}
-                        >
-                            <Box
-                                bg="linear-gradient(135deg, #3155d9, #7657e8)"
-                                color="white"
-                                p={2}
-                                rounded="xl"
-                            >
-                                <Sparkles size={18} />
-                            </Box>
-
-                            <Box>
-                                <Heading size="md" color="gray.800">
-                                    SmartPrep
-                                </Heading>
-
-                                <Text fontSize="xs" color="gray.500">
-                                    Placement preparation portal
-                                </Text>
-                            </Box>
-                        </Flex>
-
-                        <Flex
-                            display={{ base: "none", md: "flex" }}
-                            align="center"
-                            gap={2}
-                        >
-                            <Button
-                                variant="subtle"
-                                colorPalette="blue"
-                                onClick={() => navigate("/dashboard")}
-                            >
-                                <LayoutDashboard size={16} />
-                                Overview
-                            </Button>
-
-                            <Button
-                                variant="ghost"
-                                onClick={() => scrollToSection("topics")}
-                            >
-                                <BookOpenCheck size={16} />
-                                Practice
-                            </Button>
-
-                            <Button
-                                variant="ghost"
-                                onClick={() => scrollToSection("analytics")}
-                            >
-                                <BarChart3 size={16} />
-                                Performance
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                onClick={() => navigate("/tests")}
-                            >
-                                <ClipboardCheck size={16} />
-                                Mock Tests
-                            </Button>
-
-                            <Box h="28px" w="1px" bg="gray.200" mx={3} />
-
-                            <Flex align="center" gap={3} mr={3}>
-                                <Flex
-                                    w="9"
-                                    h="9"
-                                    rounded="full"
-                                    bg="blue.100"
-                                    color="blue.700"
-                                    align="center"
-                                    justify="center"
-                                    fontWeight="bold"
-                                >
-                                    {user?.name?.charAt(0)?.toUpperCase() || "S"}
-                                </Flex>
-
-                                <Box>
-                                    <Text fontWeight="600" fontSize="sm">
-                                        {user?.name || "Student"}
-                                    </Text>
-
-                                    <Text color="gray.500" fontSize="xs">
-                                        Student account
-                                    </Text>
-                                </Box>
-                            </Flex>
-
-                            <Button
-                                variant="outline"
-                                colorPalette="red"
-                                onClick={handleLogout}
-                            >
-                                <LogOut size={16} />
-                                Logout
-                            </Button>
-                        </Flex>
-
-                        <Button
-                            display={{ base: "flex", md: "none" }}
-                            variant="ghost"
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            aria-label="Toggle dashboard navigation"
-                        >
-                            {mobileMenuOpen ? <X /> : <Menu />}
-                        </Button>
-                    </Flex>
-
-                    {mobileMenuOpen && (
-                        <Stack display={{ base: "flex", md: "none" }} gap={3} pt={5}>
-                            <Button
-                                justifyContent="flex-start"
-                                variant="ghost"
-                                onClick={() => {
-                                    navigate("/dashboard");
-                                    setMobileMenuOpen(false);
-                                }}
-                            >
-                                <LayoutDashboard size={16} />
-                                Overview
-                            </Button>
-
-                            <Button
-                                justifyContent="flex-start"
-                                variant="ghost"
-                                onClick={() => scrollToSection("topics")}
-                            >
-                                <BookOpenCheck size={16} />
-                                Practice
-                            </Button>
-
-                            <Button
-                                justifyContent="flex-start"
-                                variant="ghost"
-                                onClick={() => scrollToSection("analytics")}
-                            >
-                                <BarChart3 size={16} />
-                                Performance
-                            </Button>
-                            <Button
-                                justifyContent="flex-start"
-                                variant="ghost"
-                                onClick={() => {
-                                    navigate("/tests");
-                                    setMobileMenuOpen(false);
-                                }}
-                            >
-                                <ClipboardCheck size={16} />
-                                Mock Tests
-                            </Button>
-
-                            <Button
-                                justifyContent="flex-start"
-                                variant="ghost"
-                                colorPalette="red"
-                                onClick={handleLogout}
-                            >
-                                <LogOut size={16} />
-                                Logout
-                            </Button>
-                        </Stack>
-                    )}
-                </Container>
-            </Box>
+            <DashboardNavbar
+                user={user}
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+                navigate={navigate}
+                logout={handleLogout}
+                scrollToSection={scrollToSection}
+            />
 
             <Container maxW="7xl" py={{ base: 8, md: 12 }}>
                 <Box
@@ -384,8 +221,8 @@ function DashboardPage() {
                     rounded="3xl"
                     p={{ base: 6, md: 10 }}
                     mb={12}
-                    overflow="hidden"
                     position="relative"
+                    overflow="hidden"
                 >
                     <Box
                         position="absolute"
@@ -504,7 +341,7 @@ function DashboardPage() {
                                         Topic-wise Performance
                                     </Heading>
 
-                                    <Box width="100%" height={{ base: "280px", md: "340px" }}>
+                                    <Box height={{ base: "280px", md: "340px" }}>
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart
                                                 data={analytics.topicPerformance}
@@ -516,6 +353,7 @@ function DashboardPage() {
                                                 }}
                                             >
                                                 <CartesianGrid strokeDasharray="3 3" />
+
                                                 <XAxis
                                                     dataKey="topic_name"
                                                     angle={-25}
@@ -523,16 +361,19 @@ function DashboardPage() {
                                                     interval={0}
                                                     height={65}
                                                 />
+
                                                 <YAxis
                                                     domain={[0, 100]}
                                                     tickFormatter={(value) => `${value}%`}
                                                 />
+
                                                 <Tooltip
                                                     formatter={(value) => [
                                                         `${value}%`,
                                                         "Performance",
                                                     ]}
                                                 />
+
                                                 <Bar
                                                     dataKey="percentage"
                                                     fill="#3182CE"
@@ -556,69 +397,71 @@ function DashboardPage() {
                         <Spinner color="blue.500" />
                     )}
 
-                    <Stack gap={4}>
-                        {recommendations.map((recommendation) => {
-                            const percentage = Number(recommendation.percentage);
+                    {!recommendationsLoading && (
+                        <Stack gap={4}>
+                            {recommendations.map((recommendation) => {
+                                const percentage = Number(recommendation.percentage);
 
-                            const color =
-                                recommendation.priority === "HIGH"
-                                    ? "red"
-                                    : recommendation.priority === "MEDIUM"
-                                        ? "orange"
-                                        : "green";
+                                const color =
+                                    recommendation.priority === "HIGH"
+                                        ? "red"
+                                        : recommendation.priority === "MEDIUM"
+                                            ? "orange"
+                                            : "green";
 
-                            return (
-                                <Flex
-                                    key={recommendation.topicId}
-                                    bg="white"
-                                    p={5}
-                                    rounded="xl"
-                                    borderWidth="1px"
-                                    justify="space-between"
-                                    align={{ base: "flex-start", md: "center" }}
-                                    direction={{ base: "column", md: "row" }}
-                                    gap={4}
-                                >
-                                    <Box>
-                                        <Flex align="center" gap={3} wrap="wrap">
-                                            <Heading size="sm">
-                                                {recommendation.topicName}
-                                            </Heading>
-
-                                            <Box
-                                                px={3}
-                                                py={1}
-                                                rounded="full"
-                                                bg={`${color}.50`}
-                                                color={`${color}.700`}
-                                                fontSize="xs"
-                                                fontWeight="bold"
-                                            >
-                                                {recommendation.priority}
-                                            </Box>
-                                        </Flex>
-
-                                        <Text color="gray.600" mt={2}>
-                                            {recommendation.message}
-                                        </Text>
-
-                                        <Text color="gray.500" fontSize="sm" mt={1}>
-                                            Current performance: {percentage}%
-                                        </Text>
-                                    </Box>
-
-                                    <Button
-                                        colorPalette="blue"
-                                        onClick={() =>
-                                            navigate(`/practice/${recommendation.topicId}`)
-                                        }
+                                return (
+                                    <Flex
+                                        key={recommendation.topicId}
+                                        bg="white"
+                                        p={5}
+                                        rounded="xl"
+                                        borderWidth="1px"
+                                        justify="space-between"
+                                        align={{ base: "flex-start", md: "center" }}
+                                        direction={{ base: "column", md: "row" }}
+                                        gap={4}
                                     >
-                                        Practice Now
-                                    </Button>
-                                </Flex>
-                            );
-                        })}
-                    </Stack>
+                                        <Box>
+                                            <Flex align="center" gap={3} wrap="wrap">
+                                                <Heading size="sm">
+                                                    {recommendation.topicName}
+                                                </Heading>
+
+                                                <Box
+                                                    px={3}
+                                                    py={1}
+                                                    rounded="full"
+                                                    bg={`${color}.50`}
+                                                    color={`${color}.700`}
+                                                    fontSize="xs"
+                                                    fontWeight="bold"
+                                                >
+                                                    {recommendation.priority}
+                                                </Box>
+                                            </Flex>
+
+                                            <Text color="gray.600" mt={2}>
+                                                {recommendation.message}
+                                            </Text>
+
+                                            <Text color="gray.500" fontSize="sm" mt={1}>
+                                                Current performance: {percentage}%
+                                            </Text>
+                                        </Box>
+
+                                        <Button
+                                            colorPalette="blue"
+                                            onClick={() =>
+                                                navigate(`/practice/${recommendation.topicId}`)
+                                            }
+                                        >
+                                            Practice Now
+                                        </Button>
+                                    </Flex>
+                                );
+                            })}
+                        </Stack>
+                    )}
                 </Box>
 
                 <Box mt={16}>
@@ -654,15 +497,44 @@ function DashboardPage() {
                                 gap={4}
                             >
                                 <Box>
-                                    <Heading size="sm">{attempt.topic_name}</Heading>
+                                    <Flex align="center" gap={3} wrap="wrap">
+                                        <Heading size="sm">
+                                            {attempt.topic_name}
+                                        </Heading>
 
-                                    <Text color="gray.600" fontSize="sm" mt={1}>
-                                        {attempt.score} out of {attempt.total_questions} correct
+                                        <Box
+                                            px={3}
+                                            py={1}
+                                            rounded="full"
+                                            fontSize="xs"
+                                            fontWeight="bold"
+                                            bg={
+                                                attempt.attempt_type === "MOCK_TEST"
+                                                    ? "purple.50"
+                                                    : "blue.50"
+                                            }
+                                            color={
+                                                attempt.attempt_type === "MOCK_TEST"
+                                                    ? "purple.700"
+                                                    : "blue.700"
+                                            }
+                                        >
+                                            {attempt.attempt_type === "MOCK_TEST"
+                                                ? "Mock Test"
+                                                : "Topic Practice"}
+                                        </Box>
+                                    </Flex>
+
+                                    <Text color="gray.600" fontSize="sm" mt={2}>
+                                        {attempt.score} out of{" "}
+                                        {attempt.total_questions} correct
                                     </Text>
 
                                     <Text color="gray.500" fontSize="xs" mt={1}>
                                         Completed:{" "}
-                                        {new Date(attempt.completed_at).toLocaleDateString()}
+                                        {new Date(
+                                            attempt.completed_at
+                                        ).toLocaleDateString()}
                                     </Text>
                                 </Box>
 
@@ -670,7 +542,11 @@ function DashboardPage() {
                                     px={4}
                                     py={2}
                                     rounded="full"
-                                    bg={attempt.percentage >= 70 ? "green.50" : "orange.50"}
+                                    bg={
+                                        attempt.percentage >= 70
+                                            ? "green.50"
+                                            : "orange.50"
+                                    }
                                     color={
                                         attempt.percentage >= 70
                                             ? "green.700"
@@ -684,6 +560,180 @@ function DashboardPage() {
                         ))}
                     </Stack>
                 </Box>
+            </Container>
+        </Box>
+    );
+}
+
+function DashboardNavbar({
+    user,
+    mobileMenuOpen,
+    setMobileMenuOpen,
+    navigate,
+    logout,
+    scrollToSection,
+}: {
+    user: any;
+    mobileMenuOpen: boolean;
+    setMobileMenuOpen: (value: boolean) => void;
+    navigate: ReturnType<typeof useNavigate>;
+    logout: () => void;
+    scrollToSection: (id: string) => void;
+}) {
+    return (
+        <Box
+            position="sticky"
+            top="0"
+            zIndex="20"
+            bg="rgba(255,255,255,0.9)"
+            backdropFilter="blur(16px)"
+            borderBottomWidth="1px"
+            borderColor="gray.200"
+        >
+            <Container maxW="7xl" py={4}>
+                <Flex justify="space-between" align="center">
+                    <Flex
+                        align="center"
+                        gap={3}
+                        cursor="pointer"
+                        onClick={() => navigate("/dashboard")}
+                    >
+                        <Box
+                            bg="linear-gradient(135deg, #3155d9, #7657e8)"
+                            color="white"
+                            p={2}
+                            rounded="xl"
+                        >
+                            <Sparkles size={18} />
+                        </Box>
+
+                        <Box>
+                            <Heading size="md">SmartPrep</Heading>
+                            <Text fontSize="xs" color="gray.500">
+                                Placement preparation portal
+                            </Text>
+                        </Box>
+                    </Flex>
+
+                    <Flex
+                        display={{ base: "none", md: "flex" }}
+                        align="center"
+                        gap={2}
+                    >
+                        <Button
+                            variant="subtle"
+                            colorPalette="blue"
+                            onClick={() => navigate("/dashboard")}
+                        >
+                            <LayoutDashboard size={16} />
+                            Overview
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            onClick={() => scrollToSection("topics")}
+                        >
+                            <BookOpenCheck size={16} />
+                            Practice
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            onClick={() => scrollToSection("analytics")}
+                        >
+                            <BarChart3 size={16} />
+                            Performance
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            onClick={() => navigate("/tests")}
+                        >
+                            <ClipboardCheck size={16} />
+                            Mock Tests
+                        </Button>
+
+                        <Box h="28px" w="1px" bg="gray.200" mx={3} />
+
+                        <Text fontWeight="600" fontSize="sm">
+                            {user?.name || "Student"}
+                        </Text>
+
+                        <Button
+                            variant="outline"
+                            colorPalette="red"
+                            onClick={logout}
+                        >
+                            <LogOut size={16} />
+                            Logout
+                        </Button>
+                    </Flex>
+
+                    <Button
+                        display={{ base: "flex", md: "none" }}
+                        variant="ghost"
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        aria-label="Toggle dashboard navigation"
+                    >
+                        {mobileMenuOpen ? <X /> : <Menu />}
+                    </Button>
+                </Flex>
+
+                {mobileMenuOpen && (
+                    <Stack display={{ base: "flex", md: "none" }} gap={3} pt={5}>
+                        <Button
+                            justifyContent="flex-start"
+                            variant="ghost"
+                            onClick={() => {
+                                navigate("/dashboard");
+                                setMobileMenuOpen(false);
+                            }}
+                        >
+                            <LayoutDashboard size={16} />
+                            Overview
+                        </Button>
+
+                        <Button
+                            justifyContent="flex-start"
+                            variant="ghost"
+                            onClick={() => scrollToSection("topics")}
+                        >
+                            <BookOpenCheck size={16} />
+                            Practice
+                        </Button>
+
+                        <Button
+                            justifyContent="flex-start"
+                            variant="ghost"
+                            onClick={() => scrollToSection("analytics")}
+                        >
+                            <BarChart3 size={16} />
+                            Performance
+                        </Button>
+
+                        <Button
+                            justifyContent="flex-start"
+                            variant="ghost"
+                            onClick={() => {
+                                navigate("/tests");
+                                setMobileMenuOpen(false);
+                            }}
+                        >
+                            <ClipboardCheck size={16} />
+                            Mock Tests
+                        </Button>
+
+                        <Button
+                            justifyContent="flex-start"
+                            variant="ghost"
+                            colorPalette="red"
+                            onClick={logout}
+                        >
+                            <LogOut size={16} />
+                            Logout
+                        </Button>
+                    </Stack>
+                )}
             </Container>
         </Box>
     );

@@ -37,6 +37,9 @@ function PracticePage() {
         totalQuestions: number;
         percentage: number;
     } | null>(null);
+    const [recommendedDifficulty, setRecommendedDifficulty] = useState<
+        "EASY" | "MEDIUM" | "HARD"
+    >("EASY");
 
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [selectedOption, setSelectedOption] = useState("");
@@ -48,13 +51,19 @@ function PracticePage() {
             try {
                 const token = localStorage.getItem("token");
 
-                const response = await api.get(`/topics/${topicId}/questions`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
+                const response = await api.get(
+                    `/topics/${topicId}/adaptive-questions?count=5`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
 
-                setQuestions(response.data.data);
+                setQuestions(response.data.data.questions);
+                setRecommendedDifficulty(
+                    response.data.data.recommendedDifficulty
+                );
             } catch (error: any) {
                 if (error.response?.status === 401) {
                     localStorage.removeItem("token");
@@ -238,6 +247,35 @@ function PracticePage() {
                 <Text color="blue.600" fontWeight="bold" fontSize="sm">
                     TOPIC PRACTICE
                 </Text>
+                <Flex mt={3} align="center" gap={3}>
+                    <Text color="gray.600">
+                        Your recommended level:
+                    </Text>
+
+                    <Box
+                        px={3}
+                        py={1}
+                        rounded="full"
+                        fontSize="sm"
+                        fontWeight="bold"
+                        bg={
+                            recommendedDifficulty === "EASY"
+                                ? "green.50"
+                                : recommendedDifficulty === "MEDIUM"
+                                    ? "orange.50"
+                                    : "red.50"
+                        }
+                        color={
+                            recommendedDifficulty === "EASY"
+                                ? "green.700"
+                                : recommendedDifficulty === "MEDIUM"
+                                    ? "orange.700"
+                                    : "red.700"
+                        }
+                    >
+                        {recommendedDifficulty}
+                    </Box>
+                </Flex>
 
                 <Heading mt={2}>Practice Questions</Heading>
 
