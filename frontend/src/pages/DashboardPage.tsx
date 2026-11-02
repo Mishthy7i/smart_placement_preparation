@@ -13,6 +13,7 @@ import {
     BookOpenCheck,
     ClipboardCheck,
     Code2,
+    Bot,
     FileText,
     LayoutDashboard,
     LogOut,
@@ -33,6 +34,7 @@ import {
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
+import SharedDashboardNavbar from "../components/DashboardNavbar";
 
 type Topic = {
     id: number;
@@ -107,7 +109,6 @@ function DashboardPage() {
     const [error, setError] = useState("");
     const [historyError, setHistoryError] = useState("");
     const [analyticsError, setAnalyticsError] = useState("");
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const savedUser = localStorage.getItem("user");
     const user = savedUser ? JSON.parse(savedUser) : null;
@@ -123,14 +124,6 @@ function DashboardPage() {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
     });
-
-    const scrollToSection = (id: string) => {
-        document.getElementById(id)?.scrollIntoView({
-            behavior: "smooth",
-        });
-
-        setMobileMenuOpen(false);
-    };
 
     useEffect(() => {
         const fetchTopics = async () => {
@@ -246,14 +239,7 @@ function DashboardPage() {
 
     return (
         <Box minH="100vh" bg="#f6f8fc" color="gray.800">
-            <DashboardNavbar
-                user={user}
-                mobileMenuOpen={mobileMenuOpen}
-                setMobileMenuOpen={setMobileMenuOpen}
-                navigate={navigate}
-                logout={handleLogout}
-                scrollToSection={scrollToSection}
-            />
+            <SharedDashboardNavbar />
 
             <Container maxW="7xl" py={{ base: 8, md: 12 }}>
                 <Box
@@ -638,7 +624,7 @@ function DashboardPage() {
     );
 }
 
-function DashboardNavbar({
+export function LegacyDashboardNavbar({
     user,
     mobileMenuOpen,
     setMobileMenuOpen,
@@ -739,6 +725,7 @@ function DashboardNavbar({
                             <Code2 size={16} />
                             Coding Profiles
                         </Button>
+                        <Button variant="ghost" onClick={() => navigate("/coach")}><Bot size={16} /> Placement Coach</Button>
 
                         <Box h="28px" w="1px" bg="gray.200" mx={3} />
 
@@ -831,6 +818,7 @@ function DashboardNavbar({
                             <Code2 size={16} />
                             Coding Profiles
                         </Button>
+                        <Button justifyContent="flex-start" variant="ghost" onClick={() => { navigate("/coach"); setMobileMenuOpen(false); }}><Bot size={16} /> Placement Coach</Button>
                         <Button
                             justifyContent="flex-start"
                             variant="ghost"

@@ -1,8 +1,11 @@
 import {
     BarChart3,
     Code2,
+    Bot,
     BookOpenCheck,
     LayoutDashboard,
+    ClipboardCheck,
+    FileText,
     LogOut,
     Menu,
     Sparkles,
@@ -50,11 +53,14 @@ function DashboardNavbar() {
             icon: BarChart3,
             path: "/dashboard#analytics",
         },
+        { label: "Mock Tests", icon: ClipboardCheck, path: "/tests" },
+        { label: "Resume Analyzer", icon: FileText, path: "/resume" },
         {
             label: "Coding Profiles",
             icon: Code2,
             path: "/coding-profiles",
         },
+        { label: "Placement Coach", icon: Bot, path: "/coach" },
     ];
 
     return (

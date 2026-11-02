@@ -10,6 +10,7 @@ import TestsPage from "./pages/TestsPage";
 import MockTestPage from "./pages/MockTestPage";
 import ResumePage from "./pages/ResumePage";
 import CodingProfilesPage from "./pages/CodingProfilesPage";
+import CoachPage from "./pages/CoachPage";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const token = localStorage.getItem("token");
@@ -72,6 +73,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/coach" element={<ProtectedRoute><CoachPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
