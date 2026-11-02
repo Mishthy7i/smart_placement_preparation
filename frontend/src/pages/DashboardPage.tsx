@@ -134,9 +134,7 @@ function DashboardPage() {
                                     mt={6}
                                     colorPalette="blue"
                                     variant="outline"
-                                    onClick={() => {
-                                        alert(`Practice for ${topic.name} will be added next.`);
-                                    }}
+                                    onClick={() => navigate(`/practice/${topic.id}`)}
                                 >
                                     Start Practice
                                 </Button>

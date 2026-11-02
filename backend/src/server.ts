@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import db from "./db";
 import authRoutes from "./routes/authRoutes";
 import topicsRoutes from "./routes/topicsRoutes";
+import questionRoutes from "./routes/questionRoutes";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger";
 import {
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth", authRoutes);
 app.use("/api/topics", topicsRoutes);
+app.use("/api", questionRoutes);
 
 app.get("/api/health", (_req, res) => {
     res.json({
