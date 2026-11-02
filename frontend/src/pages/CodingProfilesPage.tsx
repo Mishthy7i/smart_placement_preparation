@@ -16,6 +16,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ExternalLink, RefreshCw, Trophy } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type CodingProfile = {
   id: number;
@@ -94,6 +95,13 @@ function CodingProfilesPage() {
     }
   };
 
+  const totalSolved = profiles.reduce((sum, profile) => sum + Number(profile.total_solved || 0), 0);
+  const highestRating = profiles.reduce((highest, profile) => Math.max(highest, Number(profile.contest_rating || 0)), 0);
+  const chartData = profiles.map((profile) => ({
+    platform: profile.platform,
+    solved: Number(profile.total_solved || 0),
+  }));
+
   return (
     <Box minH="100vh" bg="#f7f9fc">
       <DashboardNavbar />
@@ -132,6 +140,29 @@ function CodingProfilesPage() {
           </SimpleGrid>
           <Button type="submit" mt={5} colorPalette="blue" loading={saving}>Add profile</Button>
         </Box>
+
+        {!loading && profiles.length > 0 && (
+          <Box mt={8}>
+            <Heading size="md" color="#111b3d">Coding progress overview</Heading>
+            <SimpleGrid columns={{ base: 1, md: 3 }} gap={4} mt={4}>
+              <Stat label="Connected platforms" value={profiles.length} />
+              <Stat label="Total problems solved" value={totalSolved} color="blue.600" />
+              <Stat label="Highest contest rating" value={highestRating || "—"} color="purple.600" />
+            </SimpleGrid>
+            <Box mt={5} bg="white" rounded="2xl" borderWidth="1px" borderColor="gray.200" p={{ base: 4, md: 6 }} h="320px">
+              <Text fontWeight="700" mb={4}>Problems solved by platform</Text>
+              <ResponsiveContainer width="100%" height="85%">
+                <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e8edf5" />
+                  <XAxis dataKey="platform" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="solved" fill="#3155d9" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+          </Box>
+        )}
 
         {loading ? (
           <Flex justify="center" py={20}><Spinner size="xl" colorPalette="blue" /></Flex>
