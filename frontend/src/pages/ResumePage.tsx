@@ -20,6 +20,11 @@ type AnalysisResult = {
     foundSkills: string[];
     missingSkills: string[];
     suggestions: string[];
+    score?: number;
+    summary?: string;
+    provider?: string;
+    actionPlan?: string[];
+    atsKeywords?: string[];
 };
 
 function ResumePage() {
@@ -92,7 +97,21 @@ function ResumePage() {
                 }
             );
 
-            setAnalysis(analysisResponse.data.data);
+            const result = analysisResponse.data.data;
+            setAnalysis({
+                targetCompany: result.targetCompany ?? targetCompany,
+                targetRole: result.targetRole ?? targetRole,
+                matchedProfile: Boolean(result.matchedProfile),
+                requiredSkills: result.requiredSkills ?? result.atsKeywords ?? [],
+                foundSkills: result.foundSkills ?? result.strengths ?? [],
+                missingSkills: result.missingSkills ?? [],
+                suggestions: result.suggestions ?? [],
+                score: result.score,
+                summary: result.summary,
+                provider: result.provider,
+                actionPlan: result.actionPlan ?? [],
+                atsKeywords: result.atsKeywords ?? [],
+            });
         } catch (error: any) {
             if (error.response?.status === 401) {
                 localStorage.removeItem("token");
@@ -210,6 +229,16 @@ function ResumePage() {
                         <Box bg="white" p={7} rounded="2xl" shadow="sm">
                             <Heading size="md">Analysis Summary</Heading>
 
+                            {analysis.score !== undefined && (
+                                <Text mt={3} fontSize="3xl" fontWeight="800" color="blue.600">
+                                    {analysis.score}/100
+                                </Text>
+                            )}
+
+                            {analysis.summary && (
+                                <Text mt={2} color="gray.600">{analysis.summary}</Text>
+                            )}
+
                             <Text mt={3} color="gray.600">
                                 Target role: {analysis.targetRole}
                             </Text>
@@ -229,6 +258,12 @@ function ResumePage() {
                                     ? "Matched company-role profile"
                                     : "General role profile used"}
                             </Text>
+
+                            {analysis.provider && (
+                                <Text mt={2} fontSize="sm" color="purple.600" fontWeight="600">
+                                    Analysis provider: {analysis.provider}
+                                </Text>
+                            )}
                         </Box>
 
                         <Box bg="white" p={7} rounded="2xl" shadow="sm">
@@ -317,6 +352,17 @@ function ResumePage() {
                                 ))}
                             </Stack>
                         </Box>
+
+                        {analysis.actionPlan && analysis.actionPlan.length > 0 && (
+                            <Box bg="white" p={7} rounded="2xl" shadow="sm">
+                                <Heading size="md">Action Plan</Heading>
+                                <Stack mt={4} gap={3}>
+                                    {analysis.actionPlan.map((item) => (
+                                        <Box key={item} p={4} rounded="lg" bg="purple.50" color="purple.700">{item}</Box>
+                                    ))}
+                                </Stack>
+                            </Box>
+                        )}
                     </Stack>
                 )}
             </Container>

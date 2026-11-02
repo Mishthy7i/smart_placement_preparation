@@ -7,6 +7,7 @@ import {
     AuthenticatedRequest,
 } from "../middleware/authMiddleware";
 import { resumeUpload } from "../config/upload";
+import { analyzeResumeWithGemini } from "../geminiResumeService";
 
 const router = Router();
 
@@ -339,6 +340,18 @@ router.post(
             }
 
             const resume = resumes[0];
+
+            if (process.env.GEMINI_API_KEY) {
+                try {
+                    const analysis = await analyzeResumeWithGemini({ resumeText: resume.extracted_text, targetCompany: resume.target_company, targetRole: resume.target_role });
+                    const result = { ...analysis, targetCompany: resume.target_company, targetRole: resume.target_role, provider: "Google Gemini", analyzedAt: new Date().toISOString() };
+                    await db.query("UPDATE resumes SET analysis_result = ? WHERE id = ? AND user_id = ?", [JSON.stringify(result), resumeId, userId]);
+                    return res.status(200).json({ success: true, message: "Resume analyzed successfully with Gemini", data: result });
+                } catch (geminiError) {
+                    console.error("Gemini unavailable; using rule-based fallback:", geminiError);
+                }
+            }
+
             const resumeText = resume.extracted_text.toLowerCase();
 
             let requirements: RoleRequirement[] = [];
