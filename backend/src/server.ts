@@ -8,6 +8,7 @@ import questionRoutes from "./routes/questionRoutes";
 import attemptRoutes from "./routes/attemptRoutes";
 import swaggerUi from "swagger-ui-express";
 import analyticsRoutes from "./routes/analyticsRoutes";
+import recommendationRoutes from "./routes/recommendationRoutes";
 import { swaggerSpec } from "./swagger";
 import {
     authenticateToken,
@@ -26,6 +27,8 @@ app.use("/api/topics", topicsRoutes);
 app.use("/api", questionRoutes);
 app.use("/api/attempts", attemptRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/recommendations", recommendationRoutes);
+
 
 app.get("/api/health", (_req, res) => {
     res.json({
