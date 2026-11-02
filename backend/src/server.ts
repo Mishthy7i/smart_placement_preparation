@@ -11,6 +11,7 @@ import analyticsRoutes from "./routes/analyticsRoutes";
 import recommendationRoutes from "./routes/recommendationRoutes";
 import testRoutes from "./routes/testRoutes";
 import resumeRoutes from "./routes/resumeRoutes";
+import codingProfileRoutes from "./routes/codingProfileRoutes";
 import { swaggerSpec } from "./swagger";
 import {
     authenticateToken,
@@ -32,6 +33,7 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/tests", testRoutes);
 app.use("/api/resumes", resumeRoutes);
+app.use("/api/coding-profiles", codingProfileRoutes);
 
 
 app.get("/api/health", (_req, res) => {

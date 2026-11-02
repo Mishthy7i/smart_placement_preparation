@@ -1,7 +1,7 @@
 import {
     BarChart3,
+    Code2,
     BookOpenCheck,
-    ChevronDown,
     LayoutDashboard,
     LogOut,
     Menu,
@@ -14,7 +14,6 @@ import {
     Container,
     Flex,
     Heading,
-    Icon,
     Stack,
     Text,
 } from "@chakra-ui/react";
@@ -50,6 +49,11 @@ function DashboardNavbar() {
             label: "Performance",
             icon: BarChart3,
             path: "/dashboard#analytics",
+        },
+        {
+            label: "Coding Profiles",
+            icon: Code2,
+            path: "/coding-profiles",
         },
     ];
 
@@ -100,12 +104,13 @@ function DashboardNavbar() {
                             <Button
                                 key={item.label}
                                 variant={location.hash === item.path.split("#")[1] ||
-                                    (item.path === "/dashboard" && location.pathname === "/dashboard")
+                                    (item.path === "/dashboard" && location.pathname === "/dashboard") ||
+                                    location.pathname === item.path
                                     ? "subtle"
                                     : "ghost"}
                                 colorPalette="blue"
                                 onClick={() => {
-                                    if (item.path.includes("#")) {
+                                    if (item.path.includes("#") && location.pathname === "/dashboard") {
                                         document
                                             .getElementById(item.path.split("#")[1])
                                             ?.scrollIntoView({ behavior: "smooth" });
@@ -172,7 +177,7 @@ function DashboardNavbar() {
                                 onClick={() => {
                                     setMenuOpen(false);
 
-                                    if (item.path.includes("#")) {
+                                    if (item.path.includes("#") && location.pathname === "/dashboard") {
                                         document
                                             .getElementById(item.path.split("#")[1])
                                             ?.scrollIntoView({ behavior: "smooth" });
