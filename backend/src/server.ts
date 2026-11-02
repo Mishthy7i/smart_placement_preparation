@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import db from "./db";
 import authRoutes from "./routes/authRoutes";
+import topicsRoutes from "./routes/topicsRoutes";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger";
 import {
@@ -18,6 +19,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth", authRoutes);
+app.use("/api/topics", topicsRoutes);
 
 app.get("/api/health", (_req, res) => {
     res.json({
