@@ -5,6 +5,7 @@ import db from "./db";
 import authRoutes from "./routes/authRoutes";
 import topicsRoutes from "./routes/topicsRoutes";
 import questionRoutes from "./routes/questionRoutes";
+import attemptRoutes from "./routes/attemptRoutes";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger";
 import {
@@ -22,6 +23,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth", authRoutes);
 app.use("/api/topics", topicsRoutes);
 app.use("/api", questionRoutes);
+app.use("/api/attempts", attemptRoutes);
 
 app.get("/api/health", (_req, res) => {
     res.json({

@@ -19,15 +19,34 @@ type Topic = {
     description: string;
 };
 
+type Attempt = {
+    id: number;
+    topic_id: number;
+    topic_name: string;
+    score: number;
+    total_questions: number;
+    percentage: number;
+    completed_at: string;
+};
+
 function DashboardPage() {
     const navigate = useNavigate();
 
     const [topics, setTopics] = useState<Topic[]>([]);
+    const [attempts, setAttempts] = useState<Attempt[]>([]);
     const [loading, setLoading] = useState(true);
+    const [historyLoading, setHistoryLoading] = useState(true);
     const [error, setError] = useState("");
+    const [historyError, setHistoryError] = useState("");
 
     const savedUser = localStorage.getItem("user");
     const user = savedUser ? JSON.parse(savedUser) : null;
+
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login");
+    };
 
     useEffect(() => {
         const fetchTopics = async () => {
@@ -55,11 +74,31 @@ function DashboardPage() {
         fetchTopics();
     }, []);
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        navigate("/login");
-    };
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const token = localStorage.getItem("token");
+
+                const response = await api.get("/attempts/history", {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                setAttempts(response.data.data);
+            } catch (error: any) {
+                if (error.response?.status === 401) {
+                    handleLogout();
+                } else {
+                    setHistoryError("Unable to load practice history");
+                }
+            } finally {
+                setHistoryLoading(false);
+            }
+        };
+
+        fetchHistory();
+    }, []);
 
     return (
         <Box minH="100vh" bg="gray.50">
@@ -104,7 +143,13 @@ function DashboardPage() {
                     </Text>
                 )}
 
-                {!loading && !error && (
+                {!loading && !error && topics.length === 0 && (
+                    <Box bg="white" p={6} rounded="2xl" borderWidth="1px">
+                        <Text color="gray.600">No topics are available yet.</Text>
+                    </Box>
+                )}
+
+                {!loading && !error && topics.length > 0 && (
                     <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
                         {topics.map((topic) => (
                             <Box
@@ -142,6 +187,72 @@ function DashboardPage() {
                         ))}
                     </SimpleGrid>
                 )}
+
+                <Box mt={12}>
+                    <Heading size="lg" mb={5}>
+                        Recent Practice History
+                    </Heading>
+
+                    {historyLoading && <Spinner color="blue.500" />}
+
+                    {historyError && (
+                        <Text color="red.500">{historyError}</Text>
+                    )}
+
+                    {!historyLoading && !historyError && attempts.length === 0 && (
+                        <Box bg="white" p={6} rounded="2xl" borderWidth="1px">
+                            <Text color="gray.600">
+                                You have not completed any practice sessions yet.
+                            </Text>
+                        </Box>
+                    )}
+
+                    {!historyLoading && !historyError && attempts.length > 0 && (
+                        <Stack gap={4}>
+                            {attempts.map((attempt) => (
+                                <Flex
+                                    key={attempt.id}
+                                    bg="white"
+                                    p={5}
+                                    rounded="xl"
+                                    borderWidth="1px"
+                                    justify="space-between"
+                                    align={{ base: "flex-start", md: "center" }}
+                                    direction={{ base: "column", md: "row" }}
+                                    gap={4}
+                                >
+                                    <Box>
+                                        <Heading size="sm">{attempt.topic_name}</Heading>
+
+                                        <Text color="gray.600" fontSize="sm" mt={1}>
+                                            {attempt.score} out of {attempt.total_questions} correct
+                                        </Text>
+
+                                        <Text color="gray.500" fontSize="xs" mt={1}>
+                                            Completed:{" "}
+                                            {new Date(attempt.completed_at).toLocaleDateString()}
+                                        </Text>
+                                    </Box>
+
+                                    <Box
+                                        px={4}
+                                        py={2}
+                                        rounded="full"
+                                        bg={attempt.percentage >= 70 ? "green.50" : "orange.50"}
+                                        color={
+                                            attempt.percentage >= 70
+                                                ? "green.700"
+                                                : "orange.700"
+                                        }
+                                        fontWeight="bold"
+                                    >
+                                        {attempt.percentage}%
+                                    </Box>
+                                </Flex>
+                            ))}
+                        </Stack>
+                    )}
+                </Box>
             </Container>
         </Box>
     );

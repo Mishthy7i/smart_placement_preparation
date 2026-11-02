@@ -24,12 +24,20 @@ type Question = {
     difficulty: "EASY" | "MEDIUM" | "HARD";
 };
 
+type AnswerOption = "A" | "B" | "C" | "D";
+
 function PracticePage() {
     const { topicId } = useParams();
     const navigate = useNavigate();
 
     const [questions, setQuestions] = useState<Question[]>([]);
-    const [topicName, setTopicName] = useState("Topic Practice");
+    const [answers, setAnswers] = useState<Record<number, AnswerOption>>({});
+    const [result, setResult] = useState<{
+        score: number;
+        totalQuestions: number;
+        percentage: number;
+    } | null>(null);
+
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [selectedOption, setSelectedOption] = useState("");
     const [loading, setLoading] = useState(true);
@@ -63,6 +71,59 @@ function PracticePage() {
         fetchQuestions();
     }, [topicId, navigate]);
 
+    const handleNext = async () => {
+        if (!selectedOption) return;
+
+        const currentQuestionData = questions[currentQuestion];
+
+        const updatedAnswers = {
+            ...answers,
+            [currentQuestionData.id]: selectedOption as AnswerOption,
+        };
+
+        setAnswers(updatedAnswers);
+
+        if (currentQuestion < questions.length - 1) {
+            const nextQuestion = questions[currentQuestion + 1];
+
+            setCurrentQuestion((previous) => previous + 1);
+            setSelectedOption(updatedAnswers[nextQuestion.id] || "");
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("token");
+
+            const response = await api.post(
+                "/attempts",
+                {
+                    topicId: Number(topicId),
+                    answers: Object.entries(updatedAnswers).map(
+                        ([questionId, selectedOption]) => ({
+                            questionId: Number(questionId),
+                            selectedOption,
+                        })
+                    ),
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            setResult(response.data.data);
+        } catch (error: any) {
+            if (error.response?.status === 401) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                navigate("/login");
+            } else {
+                setError("Unable to submit your practice attempt");
+            }
+        }
+    };
+
     if (loading) {
         return (
             <Flex minH="100vh" align="center" justify="center">
@@ -75,6 +136,7 @@ function PracticePage() {
         return (
             <Container maxW="container.md" py={12}>
                 <Text color="red.500">{error}</Text>
+
                 <Button mt={4} asChild>
                     <RouterLink to="/dashboard">Back to Dashboard</RouterLink>
                 </Button>
@@ -82,10 +144,60 @@ function PracticePage() {
         );
     }
 
+    if (result) {
+        return (
+            <Box minH="100vh" bg="gray.50">
+                <Container maxW="container.md" py={{ base: 10, md: 16 }}>
+                    <Box bg="white" p={{ base: 6, md: 10 }} rounded="2xl" shadow="sm">
+                        <Stack gap={5} textAlign="center">
+                            <Text color="green.600" fontWeight="bold">
+                                PRACTICE COMPLETED
+                            </Text>
+
+                            <Heading>Great work!</Heading>
+
+                            <Text color="gray.600">
+                                You completed all questions in this practice session.
+                            </Text>
+
+                            <Box bg="blue.50" p={6} rounded="xl">
+                                <Text fontSize="sm" color="gray.600">
+                                    Your Score
+                                </Text>
+
+                                <Heading mt={2} color="blue.700" fontSize="5xl">
+                                    {result.percentage}%
+                                </Heading>
+
+                                <Text mt={2}>
+                                    {result.score} out of {result.totalQuestions} correct
+                                </Text>
+                            </Box>
+
+                            <Flex justify="center" gap={4} wrap="wrap">
+                                <Button colorPalette="blue" asChild>
+                                    <RouterLink to="/dashboard">Back to Dashboard</RouterLink>
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    onClick={() => window.location.reload()}
+                                >
+                                    Try Again
+                                </Button>
+                            </Flex>
+                        </Stack>
+                    </Box>
+                </Container>
+            </Box>
+        );
+    }
+
     if (questions.length === 0) {
         return (
             <Container maxW="container.md" py={12}>
                 <Heading size="lg">No questions available</Heading>
+
                 <Text mt={3} color="gray.600">
                     Questions for this topic will be added soon.
                 </Text>
@@ -105,17 +217,6 @@ function PracticePage() {
         { value: "C", label: question.option_c },
         { value: "D", label: question.option_d },
     ];
-
-    const handleNext = () => {
-        if (!selectedOption) return;
-
-        if (currentQuestion < questions.length - 1) {
-            setCurrentQuestion((previous) => previous + 1);
-            setSelectedOption("");
-        } else {
-            setTopicName("Practice completed");
-        }
-    };
 
     return (
         <Box minH="100vh" bg="gray.50">
@@ -138,7 +239,7 @@ function PracticePage() {
                     TOPIC PRACTICE
                 </Text>
 
-                <Heading mt={2}>{topicName}</Heading>
+                <Heading mt={2}>Practice Questions</Heading>
 
                 <Text mt={2} color="gray.600">
                     Question {currentQuestion + 1} of {questions.length}
@@ -177,6 +278,7 @@ function PracticePage() {
                             {options.map((option) => (
                                 <RadioCard.Item key={option.value} value={option.value}>
                                     <RadioCard.ItemHiddenInput />
+
                                     <RadioCard.ItemControl>
                                         <RadioCard.ItemContent>
                                             <RadioCard.ItemText>
@@ -185,6 +287,7 @@ function PracticePage() {
                                                 </Text>
                                             </RadioCard.ItemText>
                                         </RadioCard.ItemContent>
+
                                         <RadioCard.ItemIndicator />
                                     </RadioCard.ItemControl>
                                 </RadioCard.Item>
