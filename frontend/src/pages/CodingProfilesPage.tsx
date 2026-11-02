@@ -35,6 +35,10 @@ function CodingProfilesPage() {
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [platform, setPlatform] = useState("LEETCODE");
+  const [profileUrl, setProfileUrl] = useState("");
+  const [username, setUsername] = useState("");
+  const [saving, setSaving] = useState(false);
   const token = localStorage.getItem("token");
 
   const loadProfiles = async () => {
@@ -70,6 +74,26 @@ function CodingProfilesPage() {
     }
   };
 
+  const addProfile = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    try {
+      setSaving(true);
+      setError("");
+      await api.post("/coding-profiles", {
+        platform,
+        username: username.trim() || undefined,
+        profileUrl: profileUrl.trim(),
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setProfileUrl("");
+      setUsername("");
+      await loadProfiles();
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message ?? "Unable to save coding profile.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Box minH="100vh" bg="#f7f9fc">
       <DashboardNavbar />
@@ -84,6 +108,30 @@ function CodingProfilesPage() {
         </Flex>
 
         {error && <Alert.Root status="error" mt={6}><Alert.Indicator /><Alert.Content><Alert.Title>{error}</Alert.Title></Alert.Content></Alert.Root>}
+
+        <Box as="form" onSubmit={addProfile} mt={8} bg="white" rounded="2xl" borderWidth="1px" borderColor="gray.200" p={{ base: 5, md: 7 }} shadow="sm">
+          <Heading size="md" color="#111b3d">Connect a coding profile</Heading>
+          <Text color="gray.600" mt={1}>Use a public profile URL. LeetCode synchronization is currently enabled.</Text>
+          <SimpleGrid columns={{ base: 1, md: 3 }} gap={4} mt={5}>
+            <Box>
+              <Text fontWeight="600" mb={2}>Platform</Text>
+              <select value={platform} onChange={(event) => setPlatform(event.target.value)} style={{ width: "100%", height: "40px", border: "1px solid #CBD5E0", borderRadius: "8px", padding: "0 10px" }}>
+                <option value="LEETCODE">LeetCode</option>
+                <option value="CODECHEF">CodeChef</option>
+                <option value="HACKERRANK">HackerRank</option>
+              </select>
+            </Box>
+            <Box>
+              <Text fontWeight="600" mb={2}>Profile URL</Text>
+              <input required value={profileUrl} onChange={(event) => setProfileUrl(event.target.value)} placeholder="https://leetcode.com/u/username" style={{ width: "100%", height: "40px", border: "1px solid #CBD5E0", borderRadius: "8px", padding: "0 10px" }} />
+            </Box>
+            <Box>
+              <Text fontWeight="600" mb={2}>Username (optional)</Text>
+              <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="username" style={{ width: "100%", height: "40px", border: "1px solid #CBD5E0", borderRadius: "8px", padding: "0 10px" }} />
+            </Box>
+          </SimpleGrid>
+          <Button type="submit" mt={5} colorPalette="blue" loading={saving}>Add profile</Button>
+        </Box>
 
         {loading ? (
           <Flex justify="center" py={20}><Spinner size="xl" colorPalette="blue" /></Flex>

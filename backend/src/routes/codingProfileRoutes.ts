@@ -18,6 +18,15 @@ type LeetCodeStats = {
   raw: unknown;
 };
 
+type ExternalStats = {
+  totalSolved: number;
+  easySolved: number;
+  mediumSolved: number;
+  hardSolved: number;
+  contestRating: number | null;
+  raw: unknown;
+};
+
 function getLeetCodeUsername(profileUrl: string, username?: string | null) {
   if (username?.trim()) return username.trim().replace(/^@/, "");
 
@@ -34,6 +43,19 @@ function getLeetCodeUsername(profileUrl: string, username?: string | null) {
     }
 
     return decodeURIComponent(candidate);
+  } catch {
+    return null;
+  }
+}
+
+function getExternalUsername(profileUrl: string, username?: string | null) {
+  if (username?.trim()) return username.trim().replace(/^@/, "");
+  try {
+    const parsed = new URL(profileUrl);
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    const usersIndex = segments.findIndex((segment) => segment.toLowerCase() === "users");
+    const candidate = usersIndex >= 0 ? segments[usersIndex + 1] : segments.at(-1);
+    return candidate ? decodeURIComponent(candidate) : null;
   } catch {
     return null;
   }
@@ -113,6 +135,56 @@ async function fetchLeetCodeStats(username: string): Promise<LeetCodeStats> {
     hardSolved: getCount("Hard"),
     contestRating: payload.data?.userContestRanking?.rating ?? null,
     raw: payload.data,
+  };
+}
+
+async function fetchCodeChefStats(username: string): Promise<ExternalStats> {
+  const urls = [
+    `https://codechef-stats.tashif.codes/profile/${encodeURIComponent(username)}`,
+    `https://codechef-api.vercel.app/handle/${encodeURIComponent(username)}`,
+    `https://codechef-api.vercel.app/${encodeURIComponent(username)}`,
+  ];
+  let payload: Record<string, unknown> | null = null;
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: "application/json", "User-Agent": "SmartPlacementPortal/1.0" },
+      });
+      if (response.ok) {
+        payload = (await response.json()) as Record<string, unknown>;
+        break;
+      }
+    } catch {
+      // Try the fallback URL.
+    }
+  }
+
+  if (!payload) throw new Error("CodeChef statistics provider is unavailable");
+
+  const numeric = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = Number(payload?.[key] ?? (payload?.data as Record<string, unknown> | undefined)?.[key]);
+      if (Number.isFinite(value)) return value;
+    }
+    return 0;
+  };
+
+  const solved = numeric("totalProblemsSolved", "problemsSolved", "fullySolved", "totalSolved");
+  const rating = numeric("currentRating", "rating", "highestRating");
+  const profile = payload.profile as Record<string, unknown> | undefined;
+  const profileSolved = Number(profile?.totalSolved ?? 0);
+  const profileRating = Number(profile?.currentRating ?? 0);
+
+  return {
+    totalSolved: Number.isFinite(profileSolved) && profileSolved > 0 ? profileSolved : solved,
+    easySolved: 0,
+    mediumSolved: 0,
+    hardSolved: 0,
+    contestRating: Number.isFinite(profileRating) && profileRating > 0
+      ? profileRating
+      : Number.isFinite(rating) && rating > 0 ? rating : null,
+    raw: payload,
   };
 }
 
@@ -351,17 +423,16 @@ router.post(
 
       const profile = profiles[0];
 
-      if (profile.platform !== "LEETCODE") {
+      if (profile.platform === "HACKERRANK") {
         return res.status(400).json({
           success: false,
-          message: "Synchronization is currently available only for LeetCode",
+          message: "HackerRank synchronization is not available yet",
         });
       }
 
-      const username = getLeetCodeUsername(
-        profile.profile_url,
-        profile.username
-      );
+      const username = profile.platform === "LEETCODE"
+        ? getLeetCodeUsername(profile.profile_url, profile.username)
+        : getExternalUsername(profile.profile_url, profile.username);
 
       if (!username) {
         return res.status(400).json({
@@ -370,7 +441,9 @@ router.post(
         });
       }
 
-      const stats = await fetchLeetCodeStats(username);
+      const stats = profile.platform === "LEETCODE"
+        ? await fetchLeetCodeStats(username)
+        : await fetchCodeChefStats(username);
 
       await db.query(
         `
@@ -401,16 +474,17 @@ router.post(
 
       return res.status(200).json({
         success: true,
-        message: "LeetCode profile synchronized successfully",
+        message: `${profile.platform === "LEETCODE" ? "LeetCode" : "CodeChef"} profile synchronized successfully`,
         data: {
           profileId,
-          platform: "LEETCODE",
+          platform: profile.platform,
           username,
           totalSolved: stats.totalSolved,
           easySolved: stats.easySolved,
           mediumSolved: stats.mediumSolved,
           hardSolved: stats.hardSolved,
           contestRating: stats.contestRating,
+          rawProviderData: stats.raw,
         },
       });
     } catch (error) {
@@ -418,7 +492,9 @@ router.post(
 
       return res.status(502).json({
         success: false,
-        message: "Unable to fetch statistics from the coding platform",
+        message: error instanceof Error
+          ? `CodeChef synchronization failed: ${error.message}`
+          : "Unable to fetch statistics from the coding platform",
       });
     }
   }
