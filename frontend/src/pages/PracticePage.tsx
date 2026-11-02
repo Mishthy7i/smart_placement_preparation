@@ -12,6 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { api } from "../services/api";
+import DashboardNavbar from "../components/DashboardNavbar";
 
 type Question = {
     id: number;
@@ -229,19 +230,7 @@ function PracticePage() {
 
     return (
         <Box minH="100vh" bg="gray.50">
-            <Box bg="white" borderBottomWidth="1px">
-                <Container maxW="container.lg" py={5}>
-                    <Flex justify="space-between" align="center">
-                        <Heading size="md" color="blue.700">
-                            SmartPrep
-                        </Heading>
-
-                        <Button variant="outline" asChild>
-                            <RouterLink to="/dashboard">Back to Dashboard</RouterLink>
-                        </Button>
-                    </Flex>
-                </Container>
-            </Box>
+            <DashboardNavbar />
 
             <Container maxW="container.md" py={{ base: 8, md: 12 }}>
                 <Text color="blue.600" fontWeight="bold" fontSize="sm">

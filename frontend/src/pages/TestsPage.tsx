@@ -12,6 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
+import DashboardNavbar from "../components/DashboardNavbar";
 
 type Test = {
     id: number;
@@ -58,22 +59,7 @@ function TestsPage() {
 
     return (
         <Box minH="100vh" bg="gray.50">
-            <Box bg="white" borderBottomWidth="1px">
-                <Container maxW="7xl" py={5}>
-                    <Flex justify="space-between" align="center">
-                        <Heading size="md" color="blue.700">
-                            SmartPrep
-                        </Heading>
-
-                        <Button
-                            variant="outline"
-                            onClick={() => navigate("/dashboard")}
-                        >
-                            Back to Dashboard
-                        </Button>
-                    </Flex>
-                </Container>
-            </Box>
+            <DashboardNavbar />
 
             <Container maxW="7xl" py={{ base: 8, md: 12 }}>
                 <Stack gap={2} mb={10}>

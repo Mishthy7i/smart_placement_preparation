@@ -11,6 +11,7 @@ import {
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
+import DashboardNavbar from "../components/DashboardNavbar";
 
 type AnalysisResult = {
     targetCompany: string | null;
@@ -131,22 +132,7 @@ function ResumePage() {
 
     return (
         <Box minH="100vh" bg="gray.50">
-            <Box bg="white" borderBottomWidth="1px">
-                <Container maxW="7xl" py={5}>
-                    <Flex justify="space-between" align="center">
-                        <Heading size="md" color="blue.700">
-                            SmartPrep
-                        </Heading>
-
-                        <Button
-                            variant="outline"
-                            onClick={() => navigate("/dashboard")}
-                        >
-                            Back to Dashboard
-                        </Button>
-                    </Flex>
-                </Container>
-            </Box>
+            <DashboardNavbar />
 
             <Container maxW="container.lg" py={{ base: 8, md: 12 }}>
                 <Stack gap={2} mb={8}>
@@ -227,12 +213,20 @@ function ResumePage() {
                 {analysis && (
                     <Stack gap={6} mt={8}>
                         <Box bg="white" p={7} rounded="2xl" shadow="sm">
-                            <Heading size="md">Analysis Summary</Heading>
+                            <Flex justify="space-between" align="center" gap={4}>
+                                <Heading size="md">Analysis Summary</Heading>
+                                <Button variant="outline" size="sm" onClick={() => window.print()}>
+                                    Print / Save PDF
+                                </Button>
+                            </Flex>
 
                             {analysis.score !== undefined && (
-                                <Text mt={3} fontSize="3xl" fontWeight="800" color="blue.600">
-                                    {analysis.score}/100
-                                </Text>
+                                <Flex align="center" gap={5} mt={4}>
+                                    <Box w="110px" h="110px" rounded="full" display="flex" alignItems="center" justifyContent="center" bg={`conic-gradient(#3155d9 ${analysis.score}%, #e8edf5 ${analysis.score}% 100%)`}>
+                                        <Flex w="86px" h="86px" rounded="full" bg="white" align="center" justify="center"><Text fontSize="2xl" fontWeight="800" color="blue.600">{analysis.score}</Text></Flex>
+                                    </Box>
+                                    <Box><Text fontWeight="700" color="#111b3d">Resume match score</Text><Text color="gray.600" fontSize="sm">Based on your resume and target role.</Text></Box>
+                                </Flex>
                             )}
 
                             {analysis.summary && (
@@ -265,6 +259,16 @@ function ResumePage() {
                                 </Text>
                             )}
                         </Box>
+
+                        {analysis.atsKeywords && analysis.atsKeywords.length > 0 && (
+                            <Box bg="white" p={7} rounded="2xl" shadow="sm">
+                                <Heading size="md">ATS keywords to consider</Heading>
+                                <Text mt={2} color="gray.600" fontSize="sm">Use these only when they accurately describe your experience.</Text>
+                                <Flex gap={3} wrap="wrap" mt={4}>
+                                    {analysis.atsKeywords.map((keyword) => <Box key={keyword} px={4} py={2} rounded="full" bg="blue.50" color="blue.700" fontWeight="600">{keyword}</Box>)}
+                                </Flex>
+                            </Box>
+                        )}
 
                         <Box bg="white" p={7} rounded="2xl" shadow="sm">
                             <Heading size="md">Required Role Skills</Heading>

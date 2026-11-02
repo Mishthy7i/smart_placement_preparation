@@ -12,6 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../services/api";
+import DashboardNavbar from "../components/DashboardNavbar";
 
 type TestQuestion = {
     id: number;
@@ -154,7 +155,9 @@ function MockTestPage() {
 
     if (result) {
         return (
-            <Container maxW="container.md" py={{ base: 10, md: 16 }}>
+            <Box minH="100vh" bg="gray.50">
+                <DashboardNavbar />
+                <Container maxW="container.md" py={{ base: 10, md: 16 }}>
                 <Box bg="white" p={{ base: 6, md: 10 }} rounded="2xl" shadow="sm">
                     <Stack gap={5} textAlign="center">
                         <Text color="green.600" fontWeight="bold">
@@ -183,7 +186,8 @@ function MockTestPage() {
                         </Button>
                     </Stack>
                 </Box>
-            </Container>
+                </Container>
+            </Box>
         );
     }
 
@@ -229,6 +233,7 @@ function MockTestPage() {
 
     return (
         <Box minH="100vh" bg="gray.50">
+            <DashboardNavbar />
             <Box bg="white" borderBottomWidth="1px">
                 <Container maxW="container.lg" py={5}>
                     <Flex justify="space-between" align="center">

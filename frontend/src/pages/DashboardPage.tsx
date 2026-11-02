@@ -73,6 +73,19 @@ type Recommendation = {
     message: string;
 };
 
+type ResumeInsight = {
+    id: number;
+    targetCompany: string | null;
+    targetRole: string;
+    analysis: {
+        score?: number;
+        missingSkills?: string[];
+        suggestions?: string[];
+        provider?: string;
+    } | null;
+};
+type CodingRecommendation = { platform: string; username: string | null; totalSolved: number; contestRating: number | null; priority: string; message: string };
+
 function DashboardPage() {
     const navigate = useNavigate();
 
@@ -88,6 +101,8 @@ function DashboardPage() {
     const [analyticsLoading, setAnalyticsLoading] = useState(true);
     const [recommendationsLoading, setRecommendationsLoading] =
         useState(true);
+    const [resumeInsight, setResumeInsight] = useState<ResumeInsight | null>(null);
+    const [codingRecommendations, setCodingRecommendations] = useState<CodingRecommendation[]>([]);
 
     const [error, setError] = useState("");
     const [historyError, setHistoryError] = useState("");
@@ -134,6 +149,30 @@ function DashboardPage() {
         };
 
         fetchTopics();
+    }, []);
+
+    useEffect(() => {
+        const fetchCodingRecommendations = async () => {
+            try {
+                const response = await api.get("/recommendations/coding", getAuthConfig());
+                setCodingRecommendations(response.data.data ?? []);
+            } catch (error: any) {
+                if (error.response?.status === 401) handleLogout();
+            }
+        };
+        fetchCodingRecommendations();
+    }, []);
+
+    useEffect(() => {
+        const fetchResumeInsight = async () => {
+            try {
+                const response = await api.get("/resumes/latest", getAuthConfig());
+                setResumeInsight(response.data.data);
+            } catch (error: any) {
+                if (error.response?.status === 401) handleLogout();
+            }
+        };
+        fetchResumeInsight();
     }, []);
 
     useEffect(() => {
@@ -391,6 +430,38 @@ function DashboardPage() {
                 </Box>
 
                 <Box mt={16}>
+                    {codingRecommendations.length > 0 && (
+                        <Box mb={16}>
+                            <Heading size="lg" mb={5}>Coding progress recommendations</Heading>
+                            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                                {codingRecommendations.map((item) => (
+                                    <Flex key={item.platform} bg="white" p={5} rounded="xl" borderWidth="1px" justify="space-between" gap={4} align="center">
+                                        <Box><Flex align="center" gap={3}><Heading size="sm">{item.platform}</Heading><Box px={2} py={1} rounded="full" bg={item.priority === "HIGH" ? "red.50" : item.priority === "MEDIUM" ? "orange.50" : "green.50"} color={item.priority === "HIGH" ? "red.700" : item.priority === "MEDIUM" ? "orange.700" : "green.700"} fontSize="xs" fontWeight="bold">{item.priority}</Box></Flex><Text mt={2} color="gray.600">{item.message}</Text></Box>
+                                        <Text fontSize="2xl" fontWeight="800" color="blue.600">{item.totalSolved}</Text>
+                                    </Flex>
+                                ))}
+                            </SimpleGrid>
+                        </Box>
+                    )}
+
+                    {resumeInsight?.analysis && (
+                        <Box bg="linear-gradient(135deg, #101b3d, #263d83)" color="white" p={{ base: 6, md: 8 }} rounded="2xl" shadow="lg" mb={16}>
+                            <Flex justify="space-between" align={{ base: "start", md: "center" }} direction={{ base: "column", md: "row" }} gap={5}>
+                                <Box>
+                                    <Text color="blue.200" fontSize="xs" fontWeight="800" letterSpacing=".12em">LATEST RESUME INSIGHT</Text>
+                                    <Heading size="lg" mt={2}>Your resume is ready for review</Heading>
+                                    <Text color="blue.100" mt={2}>Targeting {resumeInsight.targetRole}{resumeInsight.targetCompany ? ` at ${resumeInsight.targetCompany}` : ""}</Text>
+                                </Box>
+                                {resumeInsight.analysis.score !== undefined && <Text fontSize="4xl" fontWeight="800">{resumeInsight.analysis.score}<Text as="span" fontSize="md" color="blue.200">/100</Text></Text>}
+                            </Flex>
+                            <SimpleGrid columns={{ base: 1, md: 2 }} gap={5} mt={6}>
+                                <Box bg="whiteAlpha.150" p={4} rounded="xl"><Text fontWeight="700">Skills to strengthen</Text><Text color="blue.100" mt={2}>{resumeInsight.analysis.missingSkills?.slice(0, 3).join(", ") || "No major gaps detected"}</Text></Box>
+                                <Box bg="whiteAlpha.150" p={4} rounded="xl"><Text fontWeight="700">Top suggestion</Text><Text color="blue.100" mt={2}>{resumeInsight.analysis.suggestions?.[0] || "Review your latest analysis for recommendations."}</Text></Box>
+                            </SimpleGrid>
+                            <Button mt={6} bg="white" color="#17244c" onClick={() => navigate("/resume")}>Open Resume Analyzer</Button>
+                        </Box>
+                    )}
+
                     <Heading size="lg" mb={5}>
                         Personalized Recommendations
                     </Heading>

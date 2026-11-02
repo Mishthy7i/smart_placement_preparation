@@ -262,6 +262,38 @@ router.post(
     }
 );
 
+router.get("/latest", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: "Authentication required" });
+
+        const [rows] = await db.query(
+            `SELECT id, target_company, target_role, analysis_result
+             FROM resumes WHERE user_id = ? ORDER BY id DESC LIMIT 1`,
+            [userId]
+        );
+        const latest = (rows as { id: number; target_company: string | null; target_role: string; analysis_result: unknown }[])[0];
+        if (!latest) return res.status(404).json({ success: false, message: "No resume analysis found" });
+
+        return res.json({
+            success: true,
+            data: {
+                id: latest.id,
+                targetCompany: latest.target_company,
+                targetRole: latest.target_role,
+                analysis: latest.analysis_result
+                    ? typeof latest.analysis_result === "string"
+                        ? JSON.parse(latest.analysis_result)
+                        : latest.analysis_result
+                    : null,
+            },
+        });
+    } catch (error) {
+        console.error("Latest resume fetch error:", error);
+        return res.status(500).json({ success: false, message: "Failed to fetch latest resume analysis" });
+    }
+});
+
 /**
  * @swagger
  * /api/resumes/{resumeId}/analyze:
