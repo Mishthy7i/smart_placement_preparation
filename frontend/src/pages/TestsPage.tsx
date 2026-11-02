@@ -20,6 +20,10 @@ type Test = {
     description: string;
     duration_minutes: number;
     total_questions: number;
+    completed: number;
+    last_score: number | null;
+    last_total_questions: number | null;
+    last_completed_at: string | null;
 };
 
 function TestsPage() {
@@ -103,7 +107,12 @@ function TestsPage() {
                                     borderColor: "blue.200",
                                 }}
                             >
-                                <Heading size="md">{test.title}</Heading>
+                                <Flex justify="space-between" align="start" gap={3}>
+                                    <Heading size="md">{test.title}</Heading>
+                                    <Box px={3} py={1} rounded="full" bg={test.completed === 1 ? "green.50" : "gray.100"} color={test.completed === 1 ? "green.700" : "gray.600"} fontSize="xs" fontWeight="bold" whiteSpace="nowrap">
+                                        {test.completed === 1 ? "Completed" : "Not completed"}
+                                    </Box>
+                                </Flex>
 
                                 <Text color="gray.600" mt={3} lineHeight="1.6">
                                     {test.description}
@@ -114,14 +123,26 @@ function TestsPage() {
                                     <Text>{test.duration_minutes} minutes</Text>
                                 </Flex>
 
+                                {test.completed === 1 && (
+                                    <Text mt={3} color="green.700" fontSize="sm" fontWeight="semibold">
+                                        Last result: {test.last_score}/{test.last_total_questions} ({Math.round(((test.last_score || 0) / (test.last_total_questions || 1)) * 100)}%)
+                                    </Text>
+                                )}
+
                                 <Button
                                     mt={6}
                                     width="full"
                                     colorPalette="blue"
                                     onClick={() => navigate(`/tests/${test.id}`)}
                                 >
-                                    Start Test
+                                    {test.completed === 1 ? "Give Test Again" : "Start Test"}
                                 </Button>
+
+                                {test.completed === 1 && (
+                                    <Button mt={3} width="full" variant="outline" onClick={() => navigate(`/tests/${test.id}/result`)}>
+                                        View Latest Result
+                                    </Button>
+                                )}
                             </Box>
                         ))}
                     </SimpleGrid>

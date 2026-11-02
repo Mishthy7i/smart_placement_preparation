@@ -21,8 +21,11 @@ const router = Router();
  *       500:
  *         description: Server error
  */
-router.get("/", authenticateToken, async (_req, res) => {
+router.get("/", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: "Authentication required" });
+
         const [rows] = await db.query(`
       SELECT
         t.id,
@@ -30,10 +33,16 @@ router.get("/", authenticateToken, async (_req, res) => {
         t.description,
         t.duration_minutes,
         COUNT(tq.question_id) AS total_questions,
-        t.created_at
+        t.created_at,
+        CASE WHEN MAX(a.id) IS NULL THEN 0 ELSE 1 END AS completed,
+        MAX(a.score) AS last_score,
+        MAX(a.total_questions) AS last_total_questions,
+        MAX(a.completed_at) AS last_completed_at
       FROM tests t
       LEFT JOIN test_questions tq
         ON t.id = tq.test_id
+      LEFT JOIN attempts a
+        ON a.test_id = t.id AND a.user_id = ?
       GROUP BY
         t.id,
         t.title,
@@ -41,7 +50,7 @@ router.get("/", authenticateToken, async (_req, res) => {
         t.duration_minutes,
         t.created_at
       ORDER BY t.created_at DESC
-    `);
+    `, [userId]);
 
         return res.status(200).json({
             success: true,
@@ -161,6 +170,65 @@ router.get(
         }
     }
 );
+
+/**
+ * @swagger
+ * /api/tests/{testId}/result:
+ *   get:
+ *     summary: Get the logged-in student's latest result for a mock test
+ *     tags:
+ *       - Tests
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+    "/:testId/result",
+    authenticateToken,
+    async (req: AuthenticatedRequest, res) => {
+        try {
+            const userId = req.user?.userId;
+            const testId = Number(req.params.testId);
+            if (!userId) return res.status(401).json({ success: false, message: "Authentication required" });
+            if (!Number.isInteger(testId) || testId <= 0) return res.status(400).json({ success: false, message: "Invalid test ID" });
+
+            const [rows] = await db.query(
+                `SELECT id AS attempt_id, score, total_questions, started_at, completed_at,
+                        TIMESTAMPDIFF(SECOND, started_at, completed_at) AS time_taken_seconds,
+                        ROUND(score / NULLIF(total_questions, 0) * 100) AS percentage
+                 FROM attempts
+                 WHERE user_id = ? AND test_id = ?
+                 ORDER BY completed_at DESC, id DESC LIMIT 1`,
+                [userId, testId]
+            );
+            const result = (rows as object[])[0] || null;
+
+            if (!result) return res.json({ success: true, data: null });
+
+            const [answerRows] = await db.query(
+                `SELECT aa.question_id, aa.selected_option, aa.is_correct,
+                        q.question_text, q.option_a, q.option_b, q.option_c, q.option_d,
+                        q.correct_option, q.explanation, q.difficulty, t.name AS topic_name
+                 FROM attempt_answers aa
+                 JOIN questions q ON q.id = aa.question_id
+                 LEFT JOIN topics t ON t.id = q.topic_id
+                 WHERE aa.attempt_id = ?
+                 ORDER BY aa.id ASC`,
+                [(result as { attempt_id: number }).attempt_id]
+            );
+
+            return res.json({
+                success: true,
+                data: {
+                    ...result,
+                    answers: answerRows,
+                },
+            });
+        } catch (error) {
+            console.error("Test result error:", error);
+            return res.status(500).json({ success: false, message: "Failed to fetch test result" });
+        }
+    }
+);
 /**
  * @swagger
  * /api/tests/{testId}/submit:
@@ -227,6 +295,19 @@ router.post(
                     questionId: number;
                     selectedOption: "A" | "B" | "C" | "D";
                 }[];
+            };
+            const startedAtValue = req.body?.startedAt;
+            const startedAt = startedAtValue ? new Date(startedAtValue) : new Date();
+            const durationSeconds = Number(req.body?.durationSeconds);
+            const effectiveStartedAt = Number.isFinite(durationSeconds) && durationSeconds > 0
+                ? new Date(Date.now() - Math.floor(durationSeconds) * 1000)
+                : startedAt;
+
+            if (Number.isNaN(startedAt.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid test start time",
+                });
             };
 
             if (!userId) {
@@ -298,9 +379,9 @@ router.post(
                 `
         INSERT INTO attempts
           (user_id, test_id, topic_id, score, total_questions, started_at, completed_at)
-        VALUES (?, ?, NULL, ?, ?, NOW(), NOW())
+        VALUES (?, ?, NULL, ?, ?, ?, NOW())
         `,
-                [userId, testId, score, questions.length]
+                [userId, testId, score, questions.length, effectiveStartedAt]
             );
 
             const attemptId = (attemptResult as { insertId: number }).insertId;

@@ -27,6 +27,12 @@ type Question = {
 
 type AnswerOption = "A" | "B" | "C" | "D";
 
+type AnswerFeedback = {
+    isCorrect: boolean;
+    correctOption: AnswerOption;
+    explanation: string;
+};
+
 function PracticePage() {
     const { topicId } = useParams();
     const navigate = useNavigate();
@@ -41,9 +47,13 @@ function PracticePage() {
     const [recommendedDifficulty, setRecommendedDifficulty] = useState<
         "EASY" | "MEDIUM" | "HARD"
     >("EASY");
+    const [practiceMode, setPracticeMode] = useState<"adaptive" | "free">("adaptive");
+    const [freeDifficulty, setFreeDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("EASY");
 
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [selectedOption, setSelectedOption] = useState("");
+    const [feedback, setFeedback] = useState<AnswerFeedback | null>(null);
+    const [checkingAnswer, setCheckingAnswer] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -52,8 +62,12 @@ function PracticePage() {
             try {
                 const token = localStorage.getItem("token");
 
+                const endpoint = practiceMode === "adaptive"
+                    ? `/topics/${topicId}/adaptive-questions?count=5`
+                    : `/topics/${topicId}/questions?difficulty=${freeDifficulty}`;
+
                 const response = await api.get(
-                    `/topics/${topicId}/adaptive-questions?count=5`,
+                    endpoint,
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -61,9 +75,9 @@ function PracticePage() {
                     }
                 );
 
-                setQuestions(response.data.data.questions);
+                setQuestions(response.data.data.questions || response.data.data);
                 setRecommendedDifficulty(
-                    response.data.data.recommendedDifficulty
+                    response.data.data.recommendedDifficulty || freeDifficulty
                 );
             } catch (error: any) {
                 if (error.response?.status === 401) {
@@ -79,7 +93,7 @@ function PracticePage() {
         };
 
         fetchQuestions();
-    }, [topicId, navigate]);
+    }, [topicId, navigate, practiceMode, freeDifficulty]);
 
     const handleNext = async () => {
         if (!selectedOption) return;
@@ -93,11 +107,36 @@ function PracticePage() {
 
         setAnswers(updatedAnswers);
 
+        if (!feedback) {
+            try {
+                setCheckingAnswer(true);
+                const token = localStorage.getItem("token");
+                const response = await api.post(
+                    `/questions/${currentQuestionData.id}/check`,
+                    { selectedOption },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setFeedback(response.data.data);
+            } catch (error: any) {
+                if (error.response?.status === 401) {
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("user");
+                    navigate("/login");
+                } else {
+                    setError("Unable to check this answer");
+                }
+            } finally {
+                setCheckingAnswer(false);
+            }
+            return;
+        }
+
         if (currentQuestion < questions.length - 1) {
             const nextQuestion = questions[currentQuestion + 1];
 
             setCurrentQuestion((previous) => previous + 1);
             setSelectedOption(updatedAnswers[nextQuestion.id] || "");
+            setFeedback(null);
             return;
         }
 
@@ -132,6 +171,14 @@ function PracticePage() {
                 setError("Unable to submit your practice attempt");
             }
         }
+    };
+
+    const goToQuestion = (index: number) => {
+        if (index === currentQuestion) return;
+        const nextQuestion = questions[index];
+        setCurrentQuestion(index);
+        setSelectedOption(answers[nextQuestion.id] || "");
+        setFeedback(null);
     };
 
     if (loading) {
@@ -272,6 +319,78 @@ function PracticePage() {
                     Question {currentQuestion + 1} of {questions.length}
                 </Text>
 
+                <Flex mt={6} gap={3} align="center" wrap="wrap">
+                    <Button
+                        size="sm"
+                        variant={practiceMode === "adaptive" ? "solid" : "outline"}
+                        colorPalette="blue"
+                        onClick={() => {
+                            setPracticeMode("adaptive");
+                            setQuestions([]);
+                            setCurrentQuestion(0);
+                            setSelectedOption("");
+                            setFeedback(null);
+                            setLoading(true);
+                        }}
+                    >
+                        Adaptive Mode
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant={practiceMode === "free" ? "solid" : "outline"}
+                        colorPalette="blue"
+                        onClick={() => {
+                            setPracticeMode("free");
+                            setQuestions([]);
+                            setCurrentQuestion(0);
+                            setSelectedOption("");
+                            setFeedback(null);
+                            setLoading(true);
+                        }}
+                    >
+                        Free Learning Mode
+                    </Button>
+
+                    {practiceMode === "free" && (
+                        <select
+                            value={freeDifficulty}
+                            onChange={(event) => {
+                                setFreeDifficulty(event.target.value as "EASY" | "MEDIUM" | "HARD");
+                                setQuestions([]);
+                                setCurrentQuestion(0);
+                                setSelectedOption("");
+                                setFeedback(null);
+                                setLoading(true);
+                            }}
+                            style={{
+                                height: "32px",
+                                border: "1px solid #CBD5E0",
+                                borderRadius: "6px",
+                                padding: "0 10px",
+                                background: "white",
+                            }}
+                        >
+                            <option value="EASY">Easy</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HARD">Hard</option>
+                        </select>
+                    )}
+                </Flex>
+
+                <Flex mt={6} gap={2} wrap="wrap">
+                    {questions.map((item, index) => (
+                        <Button
+                            key={item.id}
+                            size="sm"
+                            variant={index === currentQuestion ? "solid" : "outline"}
+                            colorPalette={answers[item.id] ? "green" : "gray"}
+                            onClick={() => goToQuestion(index)}
+                        >
+                            {index + 1}
+                        </Button>
+                    ))}
+                </Flex>
+
                 <Box mt={8} bg="white" p={{ base: 5, md: 8 }} rounded="2xl" shadow="sm">
                     <Flex justify="space-between" align="center" mb={6}>
                         <Text color="gray.500" fontSize="sm">
@@ -299,7 +418,10 @@ function PracticePage() {
                     <RadioCard.Root
                         mt={8}
                         value={selectedOption}
-                        onValueChange={(details) => setSelectedOption(details.value)}
+                        onValueChange={(details) => {
+                            setSelectedOption(details.value);
+                            setFeedback(null);
+                        }}
                     >
                         <Stack gap={3}>
                             {options.map((option) => (
@@ -322,16 +444,41 @@ function PracticePage() {
                         </Stack>
                     </RadioCard.Root>
 
+                    {feedback && (
+                        <Box
+                            mt={6}
+                            p={5}
+                            rounded="xl"
+                            bg={feedback.isCorrect ? "green.50" : "red.50"}
+                            borderWidth="1px"
+                            borderColor={feedback.isCorrect ? "green.200" : "red.200"}
+                        >
+                            <Text
+                                fontWeight="bold"
+                                color={feedback.isCorrect ? "green.700" : "red.700"}
+                            >
+                                {feedback.isCorrect ? "Correct answer" : `Not quite. Correct option: ${feedback.correctOption}`}
+                            </Text>
+                            <Text mt={2} color="gray.700" lineHeight="1.7">
+                                {feedback.explanation}
+                            </Text>
+                        </Box>
+                    )}
+
                     <Button
                         mt={8}
                         width="full"
                         colorPalette="blue"
-                        disabled={!selectedOption}
+                        disabled={!selectedOption || checkingAnswer}
                         onClick={handleNext}
                     >
-                        {currentQuestion === questions.length - 1
-                            ? "Finish Practice"
-                            : "Next Question"}
+                        {checkingAnswer
+                            ? "Checking..."
+                            : !feedback
+                                ? "Check Answer"
+                                : currentQuestion === questions.length - 1
+                                    ? "Finish Practice"
+                                    : "Next Question"}
                     </Button>
                 </Box>
             </Container>

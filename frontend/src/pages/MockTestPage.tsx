@@ -46,7 +46,9 @@ function MockTestPage() {
     const [result, setResult] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [reviewMode, setReviewMode] = useState(false);
     const [error, setError] = useState("");
+    const [startedAt, setStartedAt] = useState<string>(new Date().toISOString());
 
     useEffect(() => {
         const fetchTest = async () => {
@@ -64,6 +66,7 @@ function MockTestPage() {
                 setSecondsLeft(
                     response.data.data.test.duration_minutes * 60
                 );
+                setStartedAt(new Date().toISOString());
             } catch (error: any) {
                 if (error.response?.status === 401) {
                     localStorage.removeItem("token");
@@ -98,6 +101,11 @@ function MockTestPage() {
                             questionId: Number(questionId),
                             selectedOption,
                         })
+                    ),
+                    startedAt,
+                    durationSeconds: Math.max(
+                        0,
+                        Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
                     ),
                 },
                 {
@@ -227,104 +235,99 @@ function MockTestPage() {
             setCurrentQuestion((previous) => previous + 1);
             setSelectedOption(updatedAnswers[nextQuestion.id] || "");
         } else {
-            void submitTest(updatedAnswers);
+            setReviewMode(true);
         }
     };
 
-    return (
-        <Box minH="100vh" bg="gray.50">
-            <DashboardNavbar />
-            <Box bg="white" borderBottomWidth="1px">
-                <Container maxW="container.lg" py={5}>
-                    <Flex justify="space-between" align="center">
-                        <Heading size="md" color="blue.700">
-                            SmartPrep
-                        </Heading>
+    const unansweredCount = questions.length - Object.keys(answers).length;
 
-                        <Box
-                            px={4}
-                            py={2}
-                            rounded="full"
-                            bg={secondsLeft <= 60 ? "red.50" : "blue.50"}
-                            color={secondsLeft <= 60 ? "red.700" : "blue.700"}
-                            fontWeight="bold"
-                        >
-                            {String(minutes).padStart(2, "0")}:
-                            {String(seconds).padStart(2, "0")}
+    return (
+        <Box minH="100vh" bg="#eef2f7">
+            <Box bg="#111827" color="white" borderBottomWidth="1px" borderColor="gray.700">
+                <Container maxW="container.xl" py={4}>
+                    <Flex justify="space-between" align="center" gap={5}>
+                        <Box>
+                            <Text fontSize="xs" color="blue.200" fontWeight="bold" letterSpacing="widest">
+                                SMARTPREP · MOCK ASSESSMENT
+                            </Text>
+                            <Heading size="md" mt={1}>{test?.title}</Heading>
                         </Box>
+                        <Flex align="center" gap={3}>
+                            <Text display={{ base: "none", md: "block" }} color="gray.300" fontSize="sm">Time remaining</Text>
+                            <Box px={5} py={3} rounded="lg" bg={secondsLeft <= 60 ? "red.600" : "gray.700"} fontWeight="bold" fontFamily="mono" fontSize="lg">
+                                {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+                            </Box>
+                        </Flex>
                     </Flex>
                 </Container>
             </Box>
 
-            <Container maxW="container.md" py={{ base: 8, md: 12 }}>
-                <Text color="blue.600" fontWeight="bold" fontSize="sm">
-                    MOCK ASSESSMENT
-                </Text>
-
-                <Heading mt={2}>{test?.title}</Heading>
-
-                <Text mt={2} color="gray.600">
-                    Question {currentQuestion + 1} of {questions.length}
-                </Text>
-
-                <Box mt={8} bg="white" p={{ base: 5, md: 8 }} rounded="2xl" shadow="sm">
-                    <Box h="2" bg="gray.100" rounded="full" mb={8}>
-                        <Box
-                            h="full"
-                            bg="blue.500"
-                            rounded="full"
-                            width={`${((currentQuestion + 1) / questions.length) * 100}%`}
-                        />
+            <Container maxW="container.xl" py={{ base: 5, md: 8 }}>
+                <Flex direction={{ base: "column", lg: "row" }} gap={6} align="start">
+                    <Box flex="1" width="full">
+                        <Box bg="white" rounded="xl" borderWidth="1px" borderColor="gray.200" p={{ base: 5, md: 8 }} shadow="sm">
+                            <Flex justify="space-between" align="center" mb={6}>
+                                <Box>
+                                    <Text color="gray.500" fontSize="sm" fontWeight="bold">QUESTION {currentQuestion + 1} OF {questions.length}</Text>
+                                    <Text mt={1} color="gray.500" fontSize="sm">Choose one answer. You can revisit questions before submitting.</Text>
+                                </Box>
+                                <Text color="gray.500" fontSize="sm">{Math.round(((currentQuestion + 1) / questions.length) * 100)}%</Text>
+                            </Flex>
+                            <Box h="2" bg="gray.100" rounded="full" mb={8}>
+                                <Box h="full" bg="blue.600" rounded="full" width={`${((currentQuestion + 1) / questions.length) * 100}%`} />
+                            </Box>
+                            <Text color="gray.500" fontSize="sm">Difficulty: {question.difficulty}</Text>
+                            <Heading size="lg" lineHeight="1.45" mt={4}>{question.question_text}</Heading>
+                            <RadioCard.Root mt={8} value={selectedOption} onValueChange={(details) => setSelectedOption(details.value)}>
+                                <Stack gap={3}>
+                                    {options.map((option) => (
+                                        <RadioCard.Item key={option.value} value={option.value}>
+                                            <RadioCard.ItemHiddenInput />
+                                            <RadioCard.ItemControl>
+                                                <RadioCard.ItemContent>
+                                                    <RadioCard.ItemText><Text fontWeight="semibold">{option.value}. {option.label}</Text></RadioCard.ItemText>
+                                                </RadioCard.ItemContent>
+                                                <RadioCard.ItemIndicator />
+                                            </RadioCard.ItemControl>
+                                        </RadioCard.Item>
+                                    ))}
+                                </Stack>
+                            </RadioCard.Root>
+                            <Flex mt={8} justify="space-between" gap={3}>
+                                <Button variant="outline" disabled={currentQuestion === 0} onClick={() => { const index = currentQuestion - 1; setCurrentQuestion(index); setSelectedOption(answers[questions[index].id] || ""); }}>
+                                    Previous
+                                </Button>
+                                <Button colorPalette="blue" disabled={!selectedOption || submitting} onClick={handleNext}>
+                                    {currentQuestion === questions.length - 1 ? "Review and Submit" : "Save and Continue"}
+                                </Button>
+                            </Flex>
+                            {reviewMode && (
+                                <Box mt={6} p={5} rounded="lg" bg="blue.50" borderWidth="1px" borderColor="blue.200">
+                                    <Heading size="sm">Final review</Heading>
+                                    <Text mt={2} color="gray.700">{unansweredCount > 0 ? `${unansweredCount} question(s) are unanswered and will be marked incorrect.` : "All questions have been answered."}</Text>
+                                    <Flex mt={4} gap={3} wrap="wrap">
+                                        <Button variant="outline" onClick={() => setReviewMode(false)}>Continue Reviewing</Button>
+                                        <Button colorPalette="blue" disabled={submitting} onClick={() => void submitTest(answers)}>{submitting ? "Submitting..." : "Submit Test"}</Button>
+                                    </Flex>
+                                </Box>
+                            )}
+                        </Box>
                     </Box>
 
-                    <Text color="gray.500" fontSize="sm">
-                        Difficulty: {question.difficulty}
-                    </Text>
-
-                    <Heading size="md" lineHeight="1.5" mt={4}>
-                        {question.question_text}
-                    </Heading>
-
-                    <RadioCard.Root
-                        mt={8}
-                        value={selectedOption}
-                        onValueChange={(details) =>
-                            setSelectedOption(details.value)
-                        }
-                    >
-                        <Stack gap={3}>
-                            {options.map((option) => (
-                                <RadioCard.Item key={option.value} value={option.value}>
-                                    <RadioCard.ItemHiddenInput />
-
-                                    <RadioCard.ItemControl>
-                                        <RadioCard.ItemContent>
-                                            <RadioCard.ItemText>
-                                                <Text fontWeight="bold">
-                                                    {option.value}. {option.label}
-                                                </Text>
-                                            </RadioCard.ItemText>
-                                        </RadioCard.ItemContent>
-
-                                        <RadioCard.ItemIndicator />
-                                    </RadioCard.ItemControl>
-                                </RadioCard.Item>
+                    <Box width={{ base: "full", lg: "280px" }} bg="white" rounded="xl" borderWidth="1px" borderColor="gray.200" p={5} shadow="sm" position={{ lg: "sticky" }} top={{ lg: "24px" }}>
+                        <Heading size="sm">Test overview</Heading>
+                        <Text mt={2} color="gray.600" fontSize="sm">{test?.description}</Text>
+                        <Flex mt={5} justify="space-between" fontSize="sm"><Text color="gray.500">Answered</Text><Text fontWeight="bold">{Object.keys(answers).length}/{questions.length}</Text></Flex>
+                        <Box mt={4} h="2" bg="gray.100" rounded="full"><Box h="full" bg="green.500" rounded="full" width={`${(Object.keys(answers).length / questions.length) * 100}%`} /></Box>
+                        <Text mt={7} fontWeight="bold" fontSize="sm">Question palette</Text>
+                        <Flex mt={3} gap={2} wrap="wrap">
+                            {questions.map((item, index) => (
+                                <Button key={item.id} size="sm" minW="10" variant={index === currentQuestion ? "solid" : "outline"} colorPalette={answers[item.id] ? "green" : "gray"} onClick={() => { setCurrentQuestion(index); setSelectedOption(answers[item.id] || ""); }}>{index + 1}</Button>
                             ))}
-                        </Stack>
-                    </RadioCard.Root>
-
-                    <Button
-                        mt={8}
-                        width="full"
-                        colorPalette="blue"
-                        disabled={!selectedOption || submitting}
-                        onClick={handleNext}
-                    >
-                        {currentQuestion === questions.length - 1
-                            ? "Submit Test"
-                            : "Next Question"}
-                    </Button>
-                </Box>
+                        </Flex>
+                        <Text mt={5} color="gray.500" fontSize="xs">Green numbers are answered. Outlined numbers still need review.</Text>
+                    </Box>
+                </Flex>
             </Container>
         </Box>
     );

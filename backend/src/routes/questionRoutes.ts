@@ -7,6 +7,86 @@ import {
 
 const router = Router();
 
+type AnswerOption = "A" | "B" | "C" | "D";
+
+/**
+ * @swagger
+ * /api/questions/{questionId}/check:
+ *   post:
+ *     summary: Check an answer and return its explanation
+ *     tags:
+ *       - Questions
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: questionId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - selectedOption
+ *             properties:
+ *               selectedOption:
+ *                 type: string
+ *                 enum: [A, B, C, D]
+ *     responses:
+ *       200:
+ *         description: Answer checked successfully
+ *       400:
+ *         description: Invalid question or option
+ *       401:
+ *         description: Authentication required
+ *       404:
+ *         description: Question not found
+ */
+router.post(
+    "/questions/:questionId/check",
+    authenticateToken,
+    async (req, res) => {
+        try {
+            const questionId = Number(req.params.questionId);
+            const selectedOption = String(req.body?.selectedOption || "").toUpperCase();
+
+            if (!Number.isInteger(questionId) || questionId <= 0) {
+                return res.status(400).json({ success: false, message: "Invalid question ID" });
+            }
+
+            if (!["A", "B", "C", "D"].includes(selectedOption)) {
+                return res.status(400).json({ success: false, message: "Selected option must be A, B, C or D" });
+            }
+
+            const [rows] = await db.query(
+                "SELECT correct_option, explanation FROM questions WHERE id = ? LIMIT 1",
+                [questionId]
+            );
+            const question = (rows as { correct_option: AnswerOption; explanation: string | null }[])[0];
+
+            if (!question) {
+                return res.status(404).json({ success: false, message: "Question not found" });
+            }
+
+            return res.json({
+                success: true,
+                data: {
+                    isCorrect: selectedOption === question.correct_option,
+                    correctOption: question.correct_option,
+                    explanation: question.explanation || "Explanation is not available for this question yet.",
+                },
+            });
+        } catch (error) {
+            console.error("Answer check error:", error);
+            return res.status(500).json({ success: false, message: "Failed to check answer" });
+        }
+    }
+);
+
 /**
  * @swagger
  * /api/topics/{topicId}/questions:
@@ -89,7 +169,7 @@ router.get(
           difficulty
         FROM questions
         WHERE ${conditions.join(" AND ")}
-        ORDER BY id ASC
+        ORDER BY RAND()
         `,
                 values
             );
@@ -224,6 +304,12 @@ router.get(
             const countValue = Number(req.query.count || 5);
             const count = Math.min(Math.max(countValue, 1), 10);
 
+            const fallbackDifficulties = (["EASY", "MEDIUM", "HARD"] as const).filter(
+                (difficulty) => difficulty !== selectedDifficulty
+            );
+
+            // Prefer the adaptive difficulty, but fill the set with other
+            // levels when the topic does not yet have enough questions.
             const [questionRows] = await db.query(
                 `
         SELECT
@@ -238,11 +324,10 @@ router.get(
           difficulty
         FROM questions
         WHERE topic_id = ?
-          AND difficulty = ?
-        ORDER BY RAND()
+        ORDER BY FIELD(difficulty, ?, ?, ?), RAND()
         LIMIT ${count}
         `,
-                [topicId, selectedDifficulty]
+                [topicId, selectedDifficulty, ...fallbackDifficulties]
             );
 
             const questions = questionRows as object[];
@@ -250,7 +335,7 @@ router.get(
             if (questions.length === 0) {
                 return res.status(404).json({
                     success: false,
-                    message: `No ${selectedDifficulty} questions are available for this topic`,
+                    message: "No questions are available for this topic",
                     recommendedDifficulty: selectedDifficulty,
                 });
             }

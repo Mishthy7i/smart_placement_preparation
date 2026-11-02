@@ -8,9 +8,13 @@ import DashboardPage from "./pages/DashboardPage";
 import PracticePage from "./pages/PracticePage";
 import TestsPage from "./pages/TestsPage";
 import MockTestPage from "./pages/MockTestPage";
+import TestResultPage from "./pages/TestResultPage";
 import ResumePage from "./pages/ResumePage";
 import CodingProfilesPage from "./pages/CodingProfilesPage";
 import CoachPage from "./pages/CoachPage";
+import RecommendationsPage from "./pages/RecommendationsPage";
+import TestHistoryPage from "./pages/TestHistoryPage";
+import PerformancePage from "./pages/PerformancePage";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const token = localStorage.getItem("token");
@@ -58,6 +62,10 @@ function App() {
         }
       />
       <Route
+        path="/tests/:testId/result"
+        element={<ProtectedRoute><TestResultPage /></ProtectedRoute>}
+      />
+      <Route
         path="/resume"
         element={
           <ProtectedRoute>
@@ -74,6 +82,10 @@ function App() {
         }
       />
       <Route path="/coach" element={<ProtectedRoute><CoachPage /></ProtectedRoute>} />
+      <Route path="/recommendations" element={<ProtectedRoute><RecommendationsPage /></ProtectedRoute>} />
+      <Route path="/history" element={<ProtectedRoute><TestHistoryPage /></ProtectedRoute>} />
+      <Route path="/performance" element={<ProtectedRoute><PerformancePage /></ProtectedRoute>} />
+      <Route path="/dashboard/performance" element={<ProtectedRoute><PerformancePage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
