@@ -15,6 +15,7 @@ import CoachPage from "./pages/CoachPage";
 import RecommendationsPage from "./pages/RecommendationsPage";
 import TestHistoryPage from "./pages/TestHistoryPage";
 import PerformancePage from "./pages/PerformancePage";
+import GitHubProjectsPage from "./pages/GitHubProjectsPage";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const token = localStorage.getItem("token");
@@ -86,6 +87,7 @@ function App() {
       <Route path="/history" element={<ProtectedRoute><TestHistoryPage /></ProtectedRoute>} />
       <Route path="/performance" element={<ProtectedRoute><PerformancePage /></ProtectedRoute>} />
       <Route path="/dashboard/performance" element={<ProtectedRoute><PerformancePage /></ProtectedRoute>} />
+      <Route path="/github-projects" element={<ProtectedRoute><GitHubProjectsPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

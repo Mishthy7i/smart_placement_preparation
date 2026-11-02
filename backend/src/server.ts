@@ -7,6 +7,7 @@ import topicsRoutes from "./routes/topicsRoutes";
 import questionRoutes from "./routes/questionRoutes";
 import attemptRoutes from "./routes/attemptRoutes";
 import swaggerUi from "swagger-ui-express";
+import githubProjectRoutes from "./routes/githubProjectRoutes";
 import analyticsRoutes from "./routes/analyticsRoutes";
 import recommendationRoutes from "./routes/recommendationRoutes";
 import testRoutes from "./routes/testRoutes";
@@ -36,6 +37,7 @@ app.use("/api/tests", testRoutes);
 app.use("/api/resumes", resumeRoutes);
 app.use("/api/coding-profiles", codingProfileRoutes);
 app.use("/api/coach", coachRoutes);
+app.use("/api/github-projects", githubProjectRoutes);
 
 
 app.get("/api/health", (_req, res) => {

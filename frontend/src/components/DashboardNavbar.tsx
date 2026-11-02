@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, BookOpenCheck, Bot, ClipboardCheck, Code2, FileText, LayoutDashboard, Lightbulb, LogOut, Menu, Sparkles, X } from "lucide-react";
+import { BarChart3, BookOpenCheck, Bot, ClipboardCheck, Code2, FileText, GitBranch, LayoutDashboard, Lightbulb, LogOut, Menu, Sparkles, X } from "lucide-react";
 import { Box, Button, Container, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 
 const items = [
@@ -12,6 +12,7 @@ const items = [
     { label: "Coding Profiles", icon: Code2, path: "/coding-profiles" },
     { label: "Placement Coach", icon: Bot, path: "/coach" },
     { label: "Recommendations", icon: Lightbulb, path: "/recommendations" },
+    { label: "Projects", icon: GitBranch, path: "/github-projects" },
 ];
 
 export default function DashboardNavbar() {
