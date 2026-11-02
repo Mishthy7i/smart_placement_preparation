@@ -11,6 +11,7 @@ import {
 import {
     BarChart3,
     BookOpenCheck,
+    ClipboardCheck,
     LayoutDashboard,
     LogOut,
     Menu,
@@ -264,6 +265,13 @@ function DashboardPage() {
                                 <BarChart3 size={16} />
                                 Performance
                             </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => navigate("/tests")}
+                            >
+                                <ClipboardCheck size={16} />
+                                Mock Tests
+                            </Button>
 
                             <Box h="28px" w="1px" bg="gray.200" mx={3} />
 
@@ -342,6 +350,17 @@ function DashboardPage() {
                             >
                                 <BarChart3 size={16} />
                                 Performance
+                            </Button>
+                            <Button
+                                justifyContent="flex-start"
+                                variant="ghost"
+                                onClick={() => {
+                                    navigate("/tests");
+                                    setMobileMenuOpen(false);
+                                }}
+                            >
+                                <ClipboardCheck size={16} />
+                                Mock Tests
                             </Button>
 
                             <Button
