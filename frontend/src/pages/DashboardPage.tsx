@@ -12,6 +12,7 @@ import {
     BarChart3,
     BookOpenCheck,
     ClipboardCheck,
+    FileText,
     LayoutDashboard,
     LogOut,
     Menu,
@@ -652,6 +653,13 @@ function DashboardNavbar({
                             <ClipboardCheck size={16} />
                             Mock Tests
                         </Button>
+                        <Button
+                            variant="ghost"
+                            onClick={() => navigate("/resume")}
+                        >
+                            <FileText size={16} />
+                            Resume Analyzer
+                        </Button>
 
                         <Box h="28px" w="1px" bg="gray.200" mx={3} />
 
@@ -722,7 +730,17 @@ function DashboardNavbar({
                             <ClipboardCheck size={16} />
                             Mock Tests
                         </Button>
-
+                        <Button
+                            justifyContent="flex-start"
+                            variant="ghost"
+                            onClick={() => {
+                                navigate("/resume");
+                                setMobileMenuOpen(false);
+                            }}
+                        >
+                            <FileText size={16} />
+                            Resume Analyzer
+                        </Button>
                         <Button
                             justifyContent="flex-start"
                             variant="ghost"
