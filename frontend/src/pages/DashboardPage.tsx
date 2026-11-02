@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
 import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
+import {
     Box,
     Button,
     Container,
@@ -29,15 +38,40 @@ type Attempt = {
     completed_at: string;
 };
 
+type AnalyticsData = {
+    overview: {
+        total_attempts: number;
+        questions_correct: number;
+        questions_attempted: number;
+        average_percentage: number;
+    }[];
+    topicPerformance: {
+        topic_name: string;
+        attempts: number;
+        correct_answers: number;
+        total_questions: number;
+        percentage: number;
+    }[];
+    scoreTrend: {
+        date: string;
+        percentage: number;
+    }[];
+};
+
 function DashboardPage() {
     const navigate = useNavigate();
 
     const [topics, setTopics] = useState<Topic[]>([]);
     const [attempts, setAttempts] = useState<Attempt[]>([]);
+    const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+
     const [loading, setLoading] = useState(true);
     const [historyLoading, setHistoryLoading] = useState(true);
+    const [analyticsLoading, setAnalyticsLoading] = useState(true);
+
     const [error, setError] = useState("");
     const [historyError, setHistoryError] = useState("");
+    const [analyticsError, setAnalyticsError] = useState("");
 
     const savedUser = localStorage.getItem("user");
     const user = savedUser ? JSON.parse(savedUser) : null;
@@ -100,6 +134,34 @@ function DashboardPage() {
         fetchHistory();
     }, []);
 
+    useEffect(() => {
+        const fetchAnalytics = async () => {
+            try {
+                const token = localStorage.getItem("token");
+
+                const response = await api.get("/analytics/summary", {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                setAnalytics(response.data.data);
+            } catch (error: any) {
+                if (error.response?.status === 401) {
+                    handleLogout();
+                } else {
+                    setAnalyticsError("Unable to load performance analytics");
+                }
+            } finally {
+                setAnalyticsLoading(false);
+            }
+        };
+
+        fetchAnalytics();
+    }, []);
+
+    const overview = analytics?.overview?.[0];
+
     return (
         <Box minH="100vh" bg="gray.50">
             <Box bg="white" borderBottomWidth="1px">
@@ -127,7 +189,7 @@ function DashboardPage() {
                     </Heading>
 
                     <Text color="gray.600">
-                        Choose a topic and continue your preparation.
+                        Choose a topic, practice consistently and track your progress.
                     </Text>
                 </Stack>
 
@@ -188,7 +250,98 @@ function DashboardPage() {
                     </SimpleGrid>
                 )}
 
-                <Box mt={12}>
+                <Box mt={14}>
+                    <Heading size="lg" mb={5}>
+                        Performance Analytics
+                    </Heading>
+
+                    {analyticsLoading && <Spinner color="blue.500" />}
+
+                    {analyticsError && (
+                        <Text color="red.500">{analyticsError}</Text>
+                    )}
+
+                    {!analyticsLoading && !analyticsError && analytics && (
+                        <>
+                            <SimpleGrid columns={{ base: 1, md: 3 }} gap={5}>
+                                <AnalyticsCard
+                                    label="Total Attempts"
+                                    value={overview?.total_attempts ?? 0}
+                                />
+
+                                <AnalyticsCard
+                                    label="Questions Solved"
+                                    value={overview?.questions_attempted ?? 0}
+                                />
+
+                                <AnalyticsCard
+                                    label="Average Score"
+                                    value={`${overview?.average_percentage ?? 0}%`}
+                                />
+                            </SimpleGrid>
+
+                            {analytics.topicPerformance.length > 0 && (
+                                <Box
+                                    bg="white"
+                                    mt={6}
+                                    p={{ base: 4, md: 6 }}
+                                    rounded="2xl"
+                                    shadow="sm"
+                                    borderWidth="1px"
+                                >
+                                    <Heading size="md" mb={5}>
+                                        Topic-wise Performance
+                                    </Heading>
+
+                                    <Box width="100%" height={{ base: "280px", md: "340px" }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                data={analytics.topicPerformance}
+                                                margin={{
+                                                    top: 10,
+                                                    right: 10,
+                                                    left: 0,
+                                                    bottom: 45,
+                                                }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" />
+
+                                                <XAxis
+                                                    dataKey="topic_name"
+                                                    angle={-25}
+                                                    textAnchor="end"
+                                                    interval={0}
+                                                    height={65}
+                                                />
+
+                                                <YAxis
+                                                    domain={[0, 100]}
+                                                    tickFormatter={(value) => `${value}%`}
+                                                />
+
+                                                <Tooltip
+                                                    formatter={(value) => [
+                                                        `${value}%`,
+                                                        "Performance",
+                                                    ]}
+                                                />
+
+                                                <Bar
+                                                    dataKey="percentage"
+                                                    name="Performance"
+                                                    fill="#3182CE"
+                                                    radius={[6, 6, 0, 0]}
+                                                />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </Box>
+                                </Box>
+                            )}
+                        </>
+                    )}
+                </Box>
+
+                <Box mt={14}>
                     <Heading size="lg" mb={5}>
                         Recent Practice History
                     </Heading>
@@ -254,6 +407,32 @@ function DashboardPage() {
                     )}
                 </Box>
             </Container>
+        </Box>
+    );
+}
+
+function AnalyticsCard({
+    label,
+    value,
+}: {
+    label: string;
+    value: number | string;
+}) {
+    return (
+        <Box
+            bg="white"
+            p={6}
+            rounded="2xl"
+            shadow="sm"
+            borderWidth="1px"
+        >
+            <Text color="gray.500" fontSize="sm">
+                {label}
+            </Text>
+
+            <Heading mt={2} color="blue.700">
+                {value}
+            </Heading>
         </Box>
     );
 }
