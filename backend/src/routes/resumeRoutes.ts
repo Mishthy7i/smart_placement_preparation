@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { PDFParse } from "pdf-parse";
-import mammoth from "mammoth";
+import * as mammothModule from "mammoth";
 import db from "../db";
 import {
     authenticateToken,
@@ -9,6 +9,90 @@ import {
 import { resumeUpload } from "../config/upload";
 
 const router = Router();
+
+const mammoth =
+  (mammothModule as typeof mammothModule & {
+    default?: typeof mammothModule;
+  }).default ?? mammothModule;
+
+const uploadResume = (req: any, res: any, next: any) => {
+  resumeUpload.single("resume")(req, res, (error: unknown) => {
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Invalid resume file",
+      });
+    }
+
+    next();
+  });
+};
+
+const resumeIndicators = [
+  "resume",
+  "curriculum vitae",
+  "education",
+  "experience",
+  "skills",
+  "projects",
+  "internship",
+  "certifications",
+  "linkedin",
+  "github",
+];
+
+const reportIndicators = [
+  "abstract",
+  "table of contents",
+  "chapter 1",
+  "chapter 2",
+  "methodology",
+  "literature review",
+  "research objectives",
+  "references",
+  "bibliography",
+];
+
+function validateResumeText(text: string) {
+  const normalizedText = text.toLowerCase();
+
+  const foundResumeIndicators = resumeIndicators.filter((indicator) =>
+    normalizedText.includes(indicator)
+  );
+
+  const foundReportIndicators = reportIndicators.filter((indicator) =>
+    normalizedText.includes(indicator)
+  );
+
+  const hasContactInformation =
+    /[\w.-]+@[\w.-]+\.\w+/.test(normalizedText) ||
+    normalizedText.includes("phone") ||
+    normalizedText.includes("mobile");
+
+  const resumeScore =
+    foundResumeIndicators.length + (hasContactInformation ? 2 : 0);
+
+  const reportScore = foundReportIndicators.length;
+
+  return {
+    isLikelyResume:
+      resumeScore >= 3 &&
+      resumeScore > reportScore &&
+      text.trim().length >= 250,
+    resumeScore,
+    reportScore,
+    foundResumeIndicators,
+    foundReportIndicators,
+  };
+}
+
+type RoleRequirement = {
+    skill_name: string;
+    priority: "REQUIRED" | "PREFERRED";
+};
 
 /**
  * @swagger
@@ -27,16 +111,17 @@ const router = Router();
  *             type: object
  *             required:
  *               - resume
+ *               - targetRole
  *             properties:
  *               resume:
  *                 type: string
  *                 format: binary
  *               targetCompany:
  *                 type: string
- *                 example: TCS
+ *                 example: Google
  *               targetRole:
  *                 type: string
- *                 example: Software Engineer
+ *                 example: Frontend Developer
  *     responses:
  *       201:
  *         description: Resume uploaded successfully
@@ -50,7 +135,7 @@ const router = Router();
 router.post(
     "/upload",
     authenticateToken,
-    resumeUpload.single("resume"),
+    uploadResume,
     async (req: AuthenticatedRequest, res) => {
         try {
             const userId = req.user?.userId;
@@ -95,7 +180,6 @@ router.post(
                 });
 
                 const pdfData = await parser.getText();
-
                 extractedText = pdfData.text;
 
                 await parser.destroy();
@@ -116,6 +200,22 @@ router.post(
                     message: "Could not extract text from the resume",
                 });
             }
+
+      const validation = validateResumeText(extractedText);
+
+      if (!validation.isLikelyResume) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "This document does not appear to be a resume. Please upload a resume containing sections such as Skills, Education, Experience or Projects.",
+          data: {
+            resumeScore: validation.resumeScore,
+            reportScore: validation.reportScore,
+            detectedResumeIndicators: validation.foundResumeIndicators,
+            detectedReportIndicators: validation.foundReportIndicators,
+          },
+        });
+      }
 
             const [result] = await db.query(
                 `
@@ -160,11 +260,12 @@ router.post(
         }
     }
 );
+
 /**
  * @swagger
  * /api/resumes/{resumeId}/analyze:
  *   post:
- *     summary: Analyze a resume for a target role
+ *     summary: Analyze a resume for a company and role
  *     tags:
  *       - Resumes
  *     security:
@@ -178,6 +279,8 @@ router.post(
  *     responses:
  *       200:
  *         description: Resume analyzed successfully
+ *       400:
+ *         description: Invalid resume ID
  *       401:
  *         description: Authentication required
  *       404:
@@ -237,55 +340,44 @@ router.post(
 
             const resume = resumes[0];
             const resumeText = resume.extracted_text.toLowerCase();
-            const targetRole = resume.target_role.toLowerCase();
 
-            let requiredSkills = [
-                "javascript",
-                "typescript",
-                "react",
-                "node.js",
-                "sql",
-                "git",
-                "data structures",
-                "algorithms",
-            ];
+            let requirements: RoleRequirement[] = [];
 
-            if (
-                targetRole.includes("frontend") ||
-                targetRole.includes("front-end")
-            ) {
-                requiredSkills = [
-                    "html",
-                    "css",
-                    "javascript",
-                    "typescript",
-                    "react",
-                    "responsive design",
-                    "git",
-                ];
-            } else if (
-                targetRole.includes("backend") ||
-                targetRole.includes("back-end")
-            ) {
-                requiredSkills = [
-                    "node.js",
-                    "express",
-                    "sql",
-                    "mysql",
-                    "rest api",
-                    "authentication",
-                    "git",
-                ];
-            } else if (targetRole.includes("data")) {
-                requiredSkills = [
-                    "python",
-                    "sql",
-                    "pandas",
-                    "numpy",
-                    "statistics",
-                    "machine learning",
-                ];
+            if (resume.target_company) {
+                const [requirementRows] = await db.query(
+                    `
+          SELECT
+            skill_name,
+            priority
+          FROM role_requirements
+          WHERE LOWER(company_name) = LOWER(?)
+            AND LOWER(role_name) = LOWER(?)
+          ORDER BY
+            CASE
+              WHEN priority = 'REQUIRED' THEN 1
+              ELSE 2
+            END,
+            skill_name ASC
+          `,
+                    [resume.target_company, resume.target_role]
+                );
+
+                requirements = requirementRows as RoleRequirement[];
             }
+
+            const requiredSkills =
+                requirements.length > 0
+                    ? requirements.map((requirement) => requirement.skill_name)
+                    : [
+                        "JavaScript",
+                        "TypeScript",
+                        "React",
+                        "Node.js",
+                        "SQL",
+                        "Git",
+                        "Data Structures",
+                        "Algorithms",
+                    ];
 
             const foundSkills = requiredSkills.filter((skill) =>
                 resumeText.includes(skill.toLowerCase())
@@ -296,25 +388,34 @@ router.post(
             );
 
             const suggestions = [
+                requirements.length > 0
+                    ? `This analysis is based on the ${resume.target_company} ${resume.target_role} requirement profile.`
+                    : "No exact company-role profile was found, so general role requirements were used.",
+
                 missingSkills.length > 0
                     ? `Add evidence of these skills if you have used them: ${missingSkills.join(
                         ", "
                     )}.`
-                    : "Your resume covers the main skills for this target role.",
+                    : "Your resume covers the configured skills for this target role.",
+
                 resumeText.includes("project")
                     ? "Strengthen project descriptions with measurable results and technologies used."
-                    : "Add 2–3 relevant projects with your contribution, tools and outcomes.",
+                    : "Add two or three relevant projects with your contribution, tools and outcomes.",
+
                 resumeText.includes("experience")
                     ? "Use action verbs and measurable outcomes in your experience section."
                     : "Add internship, project or practical experience details.",
-                resumeText.includes("github")
-                    ? "Keep your GitHub projects relevant and link to your strongest repositories."
-                    : "Consider adding a GitHub profile or links to relevant projects.",
+
+                resumeText.includes("education")
+                    ? "Keep your education section concise and relevant to the target role."
+                    : "Add your degree, institution and graduation details.",
             ];
 
             const analysisResult = {
                 targetCompany: resume.target_company,
                 targetRole: resume.target_role,
+                matchedProfile: requirements.length > 0,
+                requiredSkills,
                 foundSkills,
                 missingSkills,
                 suggestions,

@@ -5,8 +5,6 @@ import {
     Container,
     Flex,
     Heading,
-    List,
-    ListItem,
     Spinner,
     Stack,
     Text,
@@ -17,6 +15,8 @@ import { api } from "../services/api";
 type AnalysisResult = {
     targetCompany: string | null;
     targetRole: string;
+    matchedProfile: boolean;
+    requiredSkills: string[];
     foundSkills: string[];
     missingSkills: string[];
     suggestions: string[];
@@ -39,8 +39,13 @@ function ResumePage() {
     };
 
     const handleAnalyze = async () => {
-        if (!file || !targetRole) {
-            setError("Please select a resume and enter your target role");
+        if (!file) {
+            setError("Please select a resume file");
+            return;
+        }
+
+        if (!targetRole.trim()) {
+            setError("Please enter your target role");
             return;
         }
 
@@ -70,7 +75,9 @@ function ResumePage() {
             const uploadData = await uploadResponse.json();
 
             if (!uploadResponse.ok) {
-                throw new Error(uploadData.message || "Resume upload failed");
+                throw new Error(
+                    uploadData.message || "Resume upload failed"
+                );
             }
 
             const resumeId = uploadData.data.resumeId;
@@ -93,6 +100,7 @@ function ResumePage() {
                 navigate("/login");
             } else {
                 setError(
+                    error.message ||
                     error.response?.data?.message ||
                     "Unable to analyze the resume"
                 );
@@ -164,7 +172,7 @@ function ResumePage() {
                                 onChange={(event) =>
                                     setTargetCompany(event.target.value)
                                 }
-                                placeholder="Example: TCS"
+                                placeholder="Example: Google"
                                 style={inputStyle}
                             />
                         </Box>
@@ -176,7 +184,9 @@ function ResumePage() {
 
                             <input
                                 value={targetRole}
-                                onChange={(event) => setTargetRole(event.target.value)}
+                                onChange={(event) =>
+                                    setTargetRole(event.target.value)
+                                }
                                 placeholder="Example: Frontend Developer"
                                 style={inputStyle}
                             />
@@ -209,19 +219,55 @@ function ResumePage() {
                                     Target company: {analysis.targetCompany}
                                 </Text>
                             )}
+
+                            <Text
+                                mt={3}
+                                color={analysis.matchedProfile ? "green.600" : "orange.600"}
+                                fontWeight="bold"
+                            >
+                                {analysis.matchedProfile
+                                    ? "Matched company-role profile"
+                                    : "General role profile used"}
+                            </Text>
+                        </Box>
+
+                        <Box bg="white" p={7} rounded="2xl" shadow="sm">
+                            <Heading size="md">Required Role Skills</Heading>
+
+                            <Stack mt={4} gap={2}>
+                                {analysis.requiredSkills.map((skill) => (
+                                    <Box
+                                        key={skill}
+                                        px={4}
+                                        py={2}
+                                        rounded="lg"
+                                        bg="blue.50"
+                                        color="blue.700"
+                                    >
+                                        {skill}
+                                    </Box>
+                                ))}
+                            </Stack>
                         </Box>
 
                         <Box bg="white" p={7} rounded="2xl" shadow="sm">
                             <Heading size="md">Skills Found</Heading>
 
                             {analysis.foundSkills.length > 0 ? (
-                                <List.Root mt={4}>
+                                <Stack mt={4} gap={2}>
                                     {analysis.foundSkills.map((skill) => (
-                                        <ListItem key={skill} color="green.600">
+                                        <Box
+                                            key={skill}
+                                            px={4}
+                                            py={2}
+                                            rounded="lg"
+                                            bg="green.50"
+                                            color="green.700"
+                                        >
                                             {skill}
-                                        </ListItem>
+                                        </Box>
                                     ))}
-                                </List.Root>
+                                </Stack>
                             ) : (
                                 <Text mt={3} color="gray.600">
                                     No matching skills were detected.
@@ -233,13 +279,20 @@ function ResumePage() {
                             <Heading size="md">Skills to Consider Adding</Heading>
 
                             {analysis.missingSkills.length > 0 ? (
-                                <List.Root mt={4}>
+                                <Stack mt={4} gap={2}>
                                     {analysis.missingSkills.map((skill) => (
-                                        <ListItem key={skill} color="orange.600">
+                                        <Box
+                                            key={skill}
+                                            px={4}
+                                            py={2}
+                                            rounded="lg"
+                                            bg="orange.50"
+                                            color="orange.700"
+                                        >
                                             {skill}
-                                        </ListItem>
+                                        </Box>
                                     ))}
-                                </List.Root>
+                                </Stack>
                             ) : (
                                 <Text mt={3} color="green.600">
                                     Your resume covers the main detected skills.
@@ -250,13 +303,19 @@ function ResumePage() {
                         <Box bg="white" p={7} rounded="2xl" shadow="sm">
                             <Heading size="md">Suggestions</Heading>
 
-                            <List.Root mt={4}>
+                            <Stack mt={4} gap={3}>
                                 {analysis.suggestions.map((suggestion) => (
-                                    <ListItem key={suggestion} color="gray.700">
+                                    <Box
+                                        key={suggestion}
+                                        p={4}
+                                        rounded="lg"
+                                        bg="gray.50"
+                                        color="gray.700"
+                                    >
                                         {suggestion}
-                                    </ListItem>
+                                    </Box>
                                 ))}
-                            </List.Root>
+                            </Stack>
                         </Box>
                     </Stack>
                 )}
